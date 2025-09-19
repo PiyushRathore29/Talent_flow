@@ -5,6 +5,17 @@ import Logo from './Logo';
 const Header = () => {
   const location = useLocation();
 
+  const getLinkClass = (path) => {
+    let baseClass = 'text-nav font-inter font-semibold transition-opacity text-primary-500 hover:opacity-70';
+    if (location.pathname === path) {
+      return baseClass;
+    }
+    if (path === '/about' && location.pathname === '/') {
+        return baseClass;
+    }
+    return `${baseClass} text-primary-500/80`;
+  };
+
   return (
     <header className="absolute top-0 left-0 right-0 z-50 px-4 sm:px-8 lg:px-24 pt-8 lg:pt-16">
       <div className="flex items-center justify-between max-w-screen-xl mx-auto">
@@ -13,33 +24,18 @@ const Header = () => {
         </Link>
         
         <nav className="hidden md:flex items-center gap-6 lg:gap-12">
-          <Link 
-            to="/jobs" 
-            className={`text-nav font-inter font-semibold transition-opacity ${
-              location.pathname === '/jobs' ? 'text-primary-500' : 'text-primary-500 hover:opacity-70'
-            }`}
-          >
+          <Link to="/jobs" className={getLinkClass('/jobs')}>
             Jobs
           </Link>
-          <Link 
-            to="/features" 
-            className={`text-nav font-inter font-semibold transition-opacity ${
-              location.pathname === '/features' ? 'text-primary-500' : 'text-primary-500 hover:opacity-70'
-            }`}
-          >
+          <Link to="/candidates" className={getLinkClass('/candidates')}>
+            Candidates
+          </Link>
+          <Link to="/features" className={getLinkClass('/features')}>
             Features
           </Link>
-          <Link 
-            to="/about" 
-            className={`text-nav font-inter font-semibold transition-opacity ${
-              location.pathname === '/about' || location.pathname === '/' ? 'text-primary-500' : 'text-primary-500 hover:opacity-70'
-            }`}
-          >
+          <Link to="/about" className={getLinkClass('/about')}>
             About Us
           </Link>
-          <a href="#journal" className="text-nav font-inter font-semibold text-primary-500 hover:opacity-70 transition-opacity">
-            Journal
-          </a>
         </nav>
 
         <div className="hidden md:block">
