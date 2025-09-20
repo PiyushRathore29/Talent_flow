@@ -3,12 +3,12 @@ import { DndContext, closestCenter } from '@dnd-kit/core';
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { useCandidates } from '../hooks/useCandidates';
 import KanbanColumn from './KanbanColumn';
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, Loader } from 'lucide-react';
 
 const STAGES = ['APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER', 'HIRED'];
 
 const CandidatesBoard = () => {
-  const { candidates, setCandidates } = useCandidates();
+  const { candidates, moveCandidateToStage, loading } = useCandidates();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStage, setFilterStage] = useState('All');
 
@@ -40,19 +40,27 @@ const CandidatesBoard = () => {
     const oldStage = candidates[candidateId].currentStage;
 
     if (newStage !== oldStage) {
-      setCandidates(prev => ({
-        ...prev,
-        [candidateId]: {
-          ...prev[candidateId],
-          currentStage: newStage,
-          history: [...prev[candidateId].history, { stage: newStage, date: new Date().toISOString().split('T')[0], actor: 'HR Manager' }]
-        }
-      }));
+      moveCandidateToStage(candidateId, newStage, null, `Moved from ${oldStage} to ${newStage}`);
     }
   };
 
+  if (loading) {
+    return (
+      <div className="px-4 sm:px-8 lg:px-24">
+        <div className="max-w-screen-2xl mx-auto">
+          <div className="flex items-center justify-center py-12">
+            <div className="flex items-center gap-3">
+              <Loader className="w-6 h-6 animate-spin text-primary-600" />
+              <span className="text-lg text-gray-600">Loading candidates...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="px-4 sm:px-8 lg:px-24">
+    <div className="px-4 sm:px-8 lg:px-24 py-8">
       <div className="max-w-screen-2xl mx-auto">
         <div className="mb-8">
             <h1 className="text-heading font-impact font-black uppercase text-primary-500">Candidates Board</h1>

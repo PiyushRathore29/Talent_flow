@@ -2,19 +2,24 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ReactFlowProvider, applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
 import { AnimatePresence } from 'framer-motion';
+import { useJobs } from '../hooks/useJobs';
+import { useAuth } from '../contexts/AuthContext';
+import { dbHelpers } from '../lib/database';
+const { createJobStage, updateJobStage, getJobStages, createAssessment, createAssessmentQuestion, getQuestionsByAssessment } = dbHelpers;
 import EmployerDashboard from '../components/EmployerDashboard';
 import DashboardSidebar from '../components/DashboardSidebar';
 import JobModal from '../components/JobModal';
 import StageModal from '../components/StageModal';
+import AssessmentModal from '../components/AssessmentModal';
 import ResumeSidebar from '../components/ResumeSidebar';
-import { initialJobsData, createNewJobData } from '../data/initialDashboardData';
-import { Plus } from 'lucide-react';
+import { Plus, Loader } from 'lucide-react';
 
 const EmployerDashboardPage = () => {
   const { jobId } = useParams();
   const navigate = useNavigate();
-  const [jobs, setJobs] = useState(initialJobsData);
-  const [jobOrder, setJobOrder] = useState(Object.keys(initialJobsData));
+  const { user } = useAuth();
+  const { jobs, jobOrder, loading, createJob, updateJob, updateJobFlow, deleteJob, reorderJobs } = useJobs();
+  
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
   const [isStageModalOpen, setIsStageModalOpen] = useState(false);
   const [editingJob, setEditingJob] = useState(null);
@@ -23,14 +28,19 @@ const EmployerDashboardPage = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [resumeSidebarOpen, setResumeSidebarOpen] = useState(false);
   const [activeResume, setActiveResume] = useState(null);
+  const [isAssessmentModalOpen, setIsAssessmentModalOpen] = useState(false);
+  const [editingAssessment, setEditingAssessment] = useState(null);
+  const [assessmentStageId, setAssessmentStageId] = useState(null);
 
   const activeJob = jobs[jobId];
 
   useEffect(() => {
-    if (!activeJob && jobOrder.length > 0) {
+    if (!loading && !activeJob && jobOrder.length > 0) {
       navigate(`/dashboard/employer/${jobOrder[0]}`, { replace: true });
+    } else if (!loading && jobOrder.length === 0 && jobId !== 'overview') {
+      navigate('/dashboard/employer/overview', { replace: true });
     }
-  }, [jobId, jobs, activeJob, navigate, jobOrder]);
+  }, [jobId, jobs, activeJob, navigate, jobOrder, loading]);
 
   const handleJobSelect = (id) => {
     navigate(`/dashboard/employer/${id}`);
@@ -46,100 +56,86 @@ const EmployerDashboardPage = () => {
     setEditingJob(null);
   };
 
-  const handleSaveJob = (jobData) => {
-    if (editingJob) {
-      setJobs(prevJobs => ({
-        ...prevJobs,
-        [editingJob.id]: {
-          ...prevJobs[editingJob.id],
-          details: { ...prevJobs[editingJob.id].details, ...jobData },
-          nodes: prevJobs[editingJob.id].nodes.map(n => n.id === `job-${editingJob.id}` ? { ...n, data: { ...n.data, ...jobData } } : n)
-        }
-      }));
-    } else {
-      const newJobId = Date.now().toString();
-      const newJob = createNewJobData(newJobId, jobData.title, jobData.description);
-      setJobs(prevJobs => ({ ...prevJobs, [newJobId]: newJob }));
-      setJobOrder(prevOrder => [newJobId, ...prevOrder]);
-      navigate(`/dashboard/employer/${newJobId}`);
-    }
-    handleCloseJobModal();
-  };
-
-  const handleArchiveJob = (id) => {
-    setJobs(prevJobs => {
-      const jobToUpdate = prevJobs[id];
-      const newStatus = jobToUpdate.details.status === 'Active' ? 'Archived' : 'Active';
-      const updatedDetails = { ...jobToUpdate.details, status: newStatus };
-      return {
-        ...prevJobs,
-        [id]: {
-          ...jobToUpdate,
-          details: updatedDetails,
-          nodes: jobToUpdate.nodes.map(n => n.id === `job-${id}` ? { ...n, data: { ...n.data, status: newStatus } } : n)
-        }
-      };
-    });
-  };
-
-  const handleDeleteJob = (idToDelete) => {
-    setJobs(prevJobs => {
-      const newJobs = { ...prevJobs };
-      delete newJobs[idToDelete];
-      return newJobs;
-    });
-    setJobOrder(prevOrder => {
-      const newOrder = prevOrder.filter(id => id !== idToDelete);
-      if (jobId === idToDelete && newOrder.length > 0) {
-        navigate(`/dashboard/employer/${newOrder[0]}`, { replace: true });
-      } else if (newOrder.length === 0) {
-        navigate('/dashboard/employer');
+  const handleSaveJob = async (jobData) => {
+    try {
+      if (editingJob) {
+        await updateJob(editingJob.id, jobData);
+      } else {
+        const newJob = await createJob(jobData);
+        navigate(`/dashboard/employer/${newJob.id}`);
       }
-      return newOrder;
-    });
+      handleCloseJobModal();
+    } catch (error) {
+      console.error('Failed to save job:', error);
+      // TODO: Show error message to user
+    }
+  };
+
+  const handleArchiveJob = async (id) => {
+    try {
+      const job = jobs[id];
+      const newStatus = job.details.status === 'Active' ? 'Archived' : 'Active';
+      await updateJob(id, { status: newStatus });
+    } catch (error) {
+      console.error('Failed to archive job:', error);
+    }
+  };
+
+  const handleDeleteJob = async (idToDelete) => {
+    try {
+      await deleteJob(idToDelete);
+      if (jobId === idToDelete) {
+        if (jobOrder.length > 1) {
+          const remainingJobs = jobOrder.filter(id => id !== idToDelete.toString());
+          navigate(`/dashboard/employer/${remainingJobs[0]}`, { replace: true });
+        } else {
+          navigate('/dashboard/employer/overview', { replace: true });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to delete job:', error);
+    }
   };
   
   const handleReorderJobs = useCallback((newOrder) => {
-    setJobOrder(newOrder);
-  }, []);
+    reorderJobs(newOrder);
+  }, [reorderJobs]);
 
   const onNodesChange = useCallback((changes) => {
-    setJobs(prev => {
-      const currentJob = prev[jobId];
-      if (!currentJob) return prev;
-      const updatedNodes = applyNodeChanges(changes, currentJob.nodes);
-      return {
-        ...prev,
-        [jobId]: { ...currentJob, nodes: updatedNodes }
-      };
-    });
-  }, [jobId]);
+    if (!activeJob) return;
+    
+    const updatedNodes = applyNodeChanges(changes, activeJob.nodes);
+    updateJobFlow(jobId, { nodes: updatedNodes, edges: activeJob.edges });
+  }, [jobId, activeJob, updateJobFlow]);
 
   const onEdgesChange = useCallback((changes) => {
-    setJobs(prev => {
-      const currentJob = prev[jobId];
-      if (!currentJob) return prev;
-      const updatedEdges = applyEdgeChanges(changes, currentJob.edges);
-      return {
-        ...prev,
-        [jobId]: { ...currentJob, edges: updatedEdges }
-      };
-    });
-  }, [jobId]);
+    if (!activeJob) return;
+    
+    const updatedEdges = applyEdgeChanges(changes, activeJob.edges);
+    updateJobFlow(jobId, { nodes: activeJob.nodes, edges: updatedEdges });
+  }, [jobId, activeJob, updateJobFlow]);
   
-  const handleCandidateMove = useCallback((sourceNodeId, candidateId, targetNodeId) => {
-    setJobs(prevJobs => {
-      const currentJobData = prevJobs[jobId];
-      if (!currentJobData || sourceNodeId === targetNodeId) return prevJobs;
-  
-      const sourceNode = currentJobData.nodes.find(n => n.id === sourceNodeId);
-      if (!sourceNode || !sourceNode.data.candidates) return prevJobs;
-  
-      const candidateToMove = sourceNode.data.candidates.find(c => c.id === candidateId);
-      if (!candidateToMove) return prevJobs;
-  
+  const handleCandidateMove = useCallback(async (sourceNodeId, candidateId, targetNodeId) => {
+    if (!activeJob || sourceNodeId === targetNodeId) return;
+
+    const sourceNode = activeJob.nodes.find(n => n.id === sourceNodeId);
+    if (!sourceNode || !sourceNode.data.candidates) return;
+
+    const candidateToMove = sourceNode.data.candidates.find(c => c.id === candidateId);
+    if (!candidateToMove) return;
+
+    try {
+      // Update the candidate's stage in the database
+      await dbHelpers.moveCandidateToStage(
+        candidateId, 
+        targetNodeId, 
+        user?.id, 
+        `Moved from ${sourceNode.data.stage || 'stage'} to ${activeJob.nodes.find(n => n.id === targetNodeId)?.data.stage || 'stage'}`
+      );
+
+      // Update the UI
       let totalApplicants = 0;
-      const newNodes = currentJobData.nodes.map(node => {
+      const newNodes = activeJob.nodes.map(node => {
         let newNode = { ...node };
         if (node.id === sourceNodeId) {
           newNode.data = { ...node.data, candidates: node.data.candidates.filter(c => c.id !== candidateId) };
@@ -148,7 +144,7 @@ const EmployerDashboardPage = () => {
           newNode.data = { ...node.data, candidates: [...(node.data.candidates || []), candidateToMove] };
         }
         if (newNode.type === 'candidate' && newNode.data.candidates) {
-            totalApplicants += newNode.data.candidates.length;
+          totalApplicants += newNode.data.candidates.length;
         }
         return newNode;
       });
@@ -157,68 +153,116 @@ const EmployerDashboardPage = () => {
       if (jobNodeIndex > -1) {
         newNodes[jobNodeIndex] = { ...newNodes[jobNodeIndex], data: { ...newNodes[jobNodeIndex].data, applicants: totalApplicants } };
       }
-      
-      const updatedDetails = { ...currentJobData.details, applicants: totalApplicants };
 
-      return { ...prevJobs, [jobId]: { ...currentJobData, details: updatedDetails, nodes: newNodes } };
-    });
-  }, [jobId]);
-
-  const handleMoveToNextStage = useCallback((candidateId, currentStageId) => {
-    const currentJobData = jobs[jobId];
-    if (!currentJobData) return;
-    const connectingEdge = currentJobData.edges.find(edge => edge.source === currentStageId);
-    if (connectingEdge) {
-      handleCandidateMove(currentStageId, candidateId, connectingEdge.target);
+      updateJobFlow(jobId, { nodes: newNodes, edges: activeJob.edges });
+      updateJob(jobId, { applicants: totalApplicants });
+    } catch (error) {
+      console.error('Failed to move candidate in database:', error);
+      // TODO: Show error message to user
     }
-  }, [jobId, jobs, handleCandidateMove]);
+  }, [jobId, activeJob, updateJobFlow, updateJob, user]);
+
+  const handleMoveToNextStage = useCallback(async (candidateId, currentStageId) => {
+    if (!activeJob) return;
+    const connectingEdge = activeJob.edges.find(edge => edge.source === currentStageId);
+    if (connectingEdge) {
+      await handleCandidateMove(currentStageId, candidateId, connectingEdge.target);
+    }
+  }, [activeJob, handleCandidateMove]);
 
   const handleConnectStages = useCallback((params) => {
-    setJobs(prevJobs => {
-      const currentJobData = prevJobs[jobId];
-      if (!currentJobData) return prevJobs;
+    if (!activeJob) return;
 
-      const newEdge = {
-        id: `${params.source}-${params.target}`,
-        ...params,
-        type: 'addStageEdge'
-      };
+    const newEdge = {
+      id: `${params.source}-${params.target}`,
+      ...params,
+      type: 'addStageEdge'
+    };
 
-      if (currentJobData.edges.some(e => e.source === params.source && e.target === params.target)) {
-        return prevJobs;
-      }
+    if (activeJob.edges.some(e => e.source === params.source && e.target === params.target)) {
+      return;
+    }
 
-      const updatedEdges = currentJobData.edges.concat(newEdge);
-      return { ...prevJobs, [jobId]: { ...currentJobData, edges: updatedEdges } };
-    });
-  }, [jobId]);
+    const updatedEdges = activeJob.edges.concat(newEdge);
+    updateJobFlow(jobId, { nodes: activeJob.nodes, edges: updatedEdges });
+  }, [jobId, activeJob, updateJobFlow]);
 
-  const handleSaveStage = useCallback(({ name, id }) => {
-    if (id) { // Editing existing stage
-      setJobs(prevJobs => {
-        const currentJobData = prevJobs[jobId];
-        const updatedNodes = currentJobData.nodes.map(n => 
+  const handleSaveStage = useCallback(async ({ name, id, nodeType }) => {
+    if (!activeJob) return;
+
+    try {
+      if (id) { // Editing existing stage
+        // Update the visual node
+        const updatedNodes = activeJob.nodes.map(n => 
           n.id === id ? { ...n, data: { ...n.data, stage: name } } : n
         );
-        return { ...prevJobs, [jobId]: { ...currentJobData, nodes: updatedNodes } };
-      });
-    } else { // Adding new stage
-      if (!stageEdge) return;
-      const { source, target } = stageEdge;
-      
-      setJobs(prevJobs => {
-        const currentJobData = prevJobs[jobId];
-        const sourceNode = currentJobData.nodes.find(n => n.id === source);
+        
+        // Update the database stage
+        const existingStages = await getJobStages(parseInt(jobId));
+        const stageToUpdate = existingStages.find(s => s.nodeId === id);
+        if (stageToUpdate) {
+          await updateJobStage(stageToUpdate.id, { name });
+          console.log('Updated stage in database:', stageToUpdate.id);
+        }
+        
+        updateJobFlow(jobId, { nodes: updatedNodes, edges: activeJob.edges });
+      } else { // Adding new stage
+        if (!stageEdge) {
+          console.error('❌ No stageEdge found, cannot create stage');
+          return;
+        }
+        
+        const { source, target } = stageEdge;
+        console.log('🚀 Creating new stage:', { name, nodeType, source, target });
+        
+        const sourceNode = activeJob.nodes.find(n => n.id === source);
         const xOffset = 320;
+        const newNodeId = `job-${jobId}-stage-${Date.now()}`;
+        console.log('📍 Generated node ID:', newNodeId);
 
         const newNode = {
-          id: `job-${jobId}-stage-${Date.now()}`,
-          type: 'candidate',
+          id: newNodeId,
+          type: nodeType || 'candidate', // Use the selected node type
           position: { x: sourceNode.position.x + xOffset, y: sourceNode.position.y },
-          data: { stage: name, candidates: [] },
+          data: { 
+            stage: name, 
+            candidates: [],
+            assessment: nodeType === 'assessment' ? null : undefined // Initialize assessment field for assessment nodes
+          },
         };
+        console.log('🎯 Created visual node:', newNode);
 
-        const updatedNodes = currentJobData.nodes
+        // Save stage to database
+        console.log('📊 Fetching existing stages for job:', jobId);
+        const existingStages = await getJobStages(parseInt(jobId));
+        console.log('📋 Existing stages:', existingStages);
+        
+        const maxOrder = existingStages.length > 0 ? Math.max(...existingStages.map(s => s.order)) : 0;
+        console.log('📈 Max order found:', maxOrder);
+        
+        const stageData = {
+          jobId: parseInt(jobId),
+          name: name,
+          order: maxOrder + 1,
+          type: nodeType || 'candidate',
+          position: JSON.stringify(newNode.position),
+          nodeId: newNodeId
+        };
+        console.log('💾 Saving stage data to database:', stageData);
+        
+        const stageId = await createJobStage(stageData);
+        console.log('✅ Successfully created stage in database with ID:', stageId);
+        
+        // Verify the stage was saved by fetching it back
+        const verifyStages = await getJobStages(parseInt(jobId));
+        const savedStage = verifyStages.find(s => s.id === stageId);
+        if (savedStage) {
+          console.log('✅ VERIFICATION SUCCESS: Stage found in database:', savedStage);
+        } else {
+          console.error('❌ VERIFICATION FAILED: Stage not found in database after creation!');
+        }
+
+        const updatedNodes = activeJob.nodes
           .map(n => {
             if (n.position.x >= newNode.position.x) {
               return { ...n, position: { ...n.position, x: n.position.x + xOffset } };
@@ -227,29 +271,34 @@ const EmployerDashboardPage = () => {
           })
           .concat(newNode);
 
-        const updatedEdges = currentJobData.edges
+        const updatedEdges = activeJob.edges
           .filter(e => e.id !== stageEdge.id)
           .concat([
             { id: `${source}-${newNode.id}`, source, target: newNode.id, type: 'addStageEdge' },
             { id: `${newNode.id}-${target}`, source: newNode.id, target, type: 'addStageEdge' },
           ]);
         
-        return { ...prevJobs, [jobId]: { ...currentJobData, nodes: updatedNodes, edges: updatedEdges } };
-      });
+        updateJobFlow(jobId, { nodes: updatedNodes, edges: updatedEdges });
+      }
+    } catch (error) {
+      console.error('Failed to save stage:', error);
+      // TODO: Show error message to user
     }
+    
     setIsStageModalOpen(false);
     setEditingStage(null);
     setStageEdge(null);
-  }, [jobId, stageEdge]);
+  }, [jobId, activeJob, stageEdge, updateJobFlow]);
 
   const handleOpenAddStageModal = useCallback((edgeId) => {
-    const edge = jobs[jobId]?.edges.find(e => e.id === edgeId);
+    if (!activeJob) return;
+    const edge = activeJob.edges.find(e => e.id === edgeId);
     if (edge) {
       setStageEdge(edge);
       setEditingStage(null);
       setIsStageModalOpen(true);
     }
-  }, [jobId, jobs]);
+  }, [activeJob]);
 
   const handleOpenEditStageModal = useCallback((stageId, stageName) => {
     setEditingStage({ id: stageId, name: stageName });
@@ -257,33 +306,32 @@ const EmployerDashboardPage = () => {
   }, []);
 
   const handleDeleteStage = useCallback((stageId) => {
-    setJobs(prevJobs => {
-      const currentJobData = prevJobs[jobId];
-      const stageToDelete = currentJobData.nodes.find(n => n.id === stageId);
+    if (!activeJob) return;
 
-      if (stageToDelete.data.candidates && stageToDelete.data.candidates.length > 0) {
-        alert("Cannot delete a stage that contains candidates.");
-        return prevJobs;
-      }
+    const stageToDelete = activeJob.nodes.find(n => n.id === stageId);
 
-      const incomingEdge = currentJobData.edges.find(e => e.target === stageId);
-      const outgoingEdge = currentJobData.edges.find(e => e.source === stageId);
+    if (stageToDelete.data.candidates && stageToDelete.data.candidates.length > 0) {
+      alert("Cannot delete a stage that contains candidates.");
+      return;
+    }
 
-      const remainingNodes = currentJobData.nodes.filter(n => n.id !== stageId);
-      let remainingEdges = currentJobData.edges.filter(e => e.source !== stageId && e.target !== stageId);
+    const incomingEdge = activeJob.edges.find(e => e.target === stageId);
+    const outgoingEdge = activeJob.edges.find(e => e.source === stageId);
 
-      if (incomingEdge && outgoingEdge) {
-        remainingEdges.push({
-          id: `${incomingEdge.source}-${outgoingEdge.target}`,
-          source: incomingEdge.source,
-          target: outgoingEdge.target,
-          type: 'addStageEdge',
-        });
-      }
-      
-      return { ...prevJobs, [jobId]: { ...currentJobData, nodes: remainingNodes, edges: remainingEdges } };
-    });
-  }, [jobId]);
+    const remainingNodes = activeJob.nodes.filter(n => n.id !== stageId);
+    let remainingEdges = activeJob.edges.filter(e => e.source !== stageId && e.target !== stageId);
+
+    if (incomingEdge && outgoingEdge) {
+      remainingEdges.push({
+        id: `${incomingEdge.source}-${outgoingEdge.target}`,
+        source: incomingEdge.source,
+        target: outgoingEdge.target,
+        type: 'addStageEdge',
+      });
+    }
+    
+    updateJobFlow(jobId, { nodes: remainingNodes, edges: remainingEdges });
+  }, [jobId, activeJob, updateJobFlow]);
 
   const handleShowResume = (candidate) => {
     setActiveResume(candidate);
@@ -294,8 +342,148 @@ const EmployerDashboardPage = () => {
     setResumeSidebarOpen(false);
   };
 
-  if (jobOrder.length > 0 && !activeJob) {
-    return <div className="h-screen w-screen bg-white flex items-center justify-center font-inter text-primary-500">Loading...</div>;
+  // Assessment handlers
+  const handleCreateAssessment = useCallback((stageId) => {
+    setAssessmentStageId(stageId);
+    setEditingAssessment(null);
+    setIsAssessmentModalOpen(true);
+  }, []);
+
+  const handleEditAssessment = useCallback((stageId, assessment) => {
+    setAssessmentStageId(stageId);
+    setEditingAssessment(assessment);
+    setIsAssessmentModalOpen(true);
+  }, []);
+
+  const handleViewResponses = useCallback((stageId, assessment) => {
+    // TODO: Implement responses viewer
+    console.log('View responses for assessment:', assessment);
+  }, []);
+
+  const handleCloseAssessmentModal = () => {
+    setIsAssessmentModalOpen(false);
+    setEditingAssessment(null);
+    setAssessmentStageId(null);
+  };
+
+  const handleSaveAssessment = async (assessmentData) => {
+    try {
+      console.log('Saving assessment:', assessmentData);
+      console.log('Assessment stage ID:', assessmentStageId);
+      console.log('User company ID:', user.companyId);
+      
+      // Separate questions from assessment data
+      const { questions, ...assessmentInfo } = assessmentData;
+      
+      if (editingAssessment) {
+        // Update existing assessment
+        await dbHelpers.updateAssessment(editingAssessment.id, assessmentInfo);
+        console.log('Updated existing assessment');
+        
+        // Delete existing questions and create new ones
+        const existingQuestions = await dbHelpers.getQuestionsByAssessment(editingAssessment.id);
+        for (const question of existingQuestions) {
+          await dbHelpers.deleteAssessmentQuestion(question.id);
+        }
+        
+        // Create new questions
+        for (const question of questions) {
+          await dbHelpers.createAssessmentQuestion({
+            ...question,
+            assessmentId: editingAssessment.id
+          });
+        }
+        
+        // Update the node with the updated assessment
+        const updatedNodes = activeJob.nodes.map(node => {
+          if (node.id === assessmentStageId) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                assessment: { ...editingAssessment, ...assessmentInfo, questions }
+              }
+            };
+          }
+          return node;
+        });
+        
+        updateJobFlow(jobId, { nodes: updatedNodes, edges: activeJob.edges });
+      } else {
+        // Create new assessment
+        const assessmentId = await dbHelpers.createAssessment({
+          ...assessmentInfo,
+          jobId: parseInt(jobId),
+          stageId: assessmentStageId,
+          companyId: user.companyId,
+          createdById: user.id
+        });
+        
+        console.log('Created new assessment with ID:', assessmentId);
+        
+        // Create questions for the assessment
+        for (const question of questions) {
+          await dbHelpers.createAssessmentQuestion({
+            ...question,
+            assessmentId: assessmentId
+          });
+        }
+        
+        console.log('Created questions for assessment');
+        
+        // Update the node with the new assessment
+        const updatedNodes = activeJob.nodes.map(node => {
+          if (node.id === assessmentStageId) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                assessment: { 
+                  id: assessmentId, 
+                  ...assessmentInfo,
+                  questions,
+                  jobId: parseInt(jobId),
+                  stageId: assessmentStageId,
+                  companyId: user.companyId,
+                  createdById: user.id
+                }
+              }
+            };
+          }
+          return node;
+        });
+        
+        updateJobFlow(jobId, { nodes: updatedNodes, edges: activeJob.edges });
+        console.log('Updated job flow with assessment');
+      }
+      
+      handleCloseAssessmentModal();
+    } catch (error) {
+      console.error('Failed to save assessment:', error);
+      // TODO: Show error message to user
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="h-screen w-screen bg-white flex items-center justify-center font-inter">
+        <div className="flex items-center gap-3">
+          <Loader className="w-6 h-6 animate-spin text-primary-600" />
+          <span className="text-lg text-gray-600">Loading dashboard...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || user.role !== 'hr') {
+    return (
+      <div className="h-screen w-screen bg-white flex items-center justify-center font-inter">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900">Access Denied</h2>
+          <p className="text-gray-600 mt-2">This page is only available for HR users.</p>
+        </div>
+      </div>
+    );
   }
   
   const orderedJobs = jobOrder.map(id => jobs[id]?.details).filter(Boolean);
@@ -331,6 +519,9 @@ const EmployerDashboardPage = () => {
               onAddStage={handleOpenAddStageModal}
               onEditStage={handleOpenEditStageModal}
               onDeleteStage={handleDeleteStage}
+              onCreateAssessment={handleCreateAssessment}
+              onEditAssessment={handleEditAssessment}
+              onViewResponses={handleViewResponses}
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center">
@@ -349,6 +540,12 @@ const EmployerDashboardPage = () => {
       </main>
       <JobModal isOpen={isJobModalOpen} onClose={handleCloseJobModal} onSave={handleSaveJob} job={editingJob} />
       <StageModal isOpen={isStageModalOpen} onClose={() => { setIsStageModalOpen(false); setEditingStage(null); }} onSave={handleSaveStage} stage={editingStage} />
+      <AssessmentModal 
+        isOpen={isAssessmentModalOpen} 
+        onClose={handleCloseAssessmentModal} 
+        onSave={handleSaveAssessment} 
+        assessment={editingAssessment} 
+      />
       <AnimatePresence>
         {resumeSidebarOpen && <ResumeSidebar onClose={handleCloseResume} candidate={activeResume} />}
       </AnimatePresence>

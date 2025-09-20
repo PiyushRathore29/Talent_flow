@@ -1,6 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Plus, Search, Briefcase, MoreHorizontal, Edit, Archive, Trash2, Menu, X, GripVertical } from 'lucide-react';
+import { Plus, Search, Briefcase, MoreHorizontal, Edit, Archive, Trash2, Menu, X, GripVertical, User, LogOut, Settings } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import Logo from './Logo';
 
 const JobActions = ({ job, onEdit, onArchive, onDelete }) => {
@@ -47,8 +49,16 @@ const JobActions = ({ job, onEdit, onArchive, onDelete }) => {
 
 const SidebarContent = ({ jobs, activeJobId, onJobSelect, onNewJob, onEditJob, onArchiveJob, onDeleteJob, onReorder, onToggle }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const dragItem = useRef(null);
   const dragOverItem = useRef(null);
+
+  const handleSignOut = () => {
+    signOut();
+    navigate('/');
+  };
 
   const filteredJobs = jobs.filter(job =>
     job.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -148,6 +158,55 @@ const SidebarContent = ({ jobs, activeJobId, onJobSelect, onNewJob, onEditJob, o
           })}
         </ul>
       </nav>
+
+      {/* User Menu at bottom */}
+      <div className="mt-auto">
+        <div className="relative">
+          <button
+            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+            className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100/80 transition-colors"
+          >
+            <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
+              <User className="w-4 h-4 text-primary-600" />
+            </div>
+            <div className="flex-1 text-left">
+              <div className="text-sm font-semibold text-gray-900 truncate">
+                {user?.firstName} {user?.lastName}
+              </div>
+              <div className="text-xs text-gray-500 truncate">
+                {user?.companyName}
+              </div>
+            </div>
+            <MoreHorizontal className="w-4 h-4 text-gray-400" />
+          </button>
+
+          <AnimatePresence>
+            {isUserMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg py-2"
+              >
+                <div className="px-3 py-2 border-b border-gray-100">
+                  <div className="text-sm font-semibold text-gray-900">
+                    {user?.firstName} {user?.lastName}
+                  </div>
+                  <div className="text-xs text-gray-500">{user?.email}</div>
+                </div>
+                
+                <button
+                  onClick={handleSignOut}
+                  className="flex items-center gap-3 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sign Out
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
     </motion.aside>
   );
 };

@@ -1,12 +1,12 @@
 import React from 'react';
-import Header from '../components/Header';
+import AuthenticatedHeader from '../components/AuthenticatedHeader';
 import Footer from '../components/Footer';
 import CandidateDashboard from '../components/CandidateDashboard';
 
 const CandidateDashboardPage = () => {
   return (
     <>
-      <Header />
+      <AuthenticatedHeader />
       <main>
         <CandidateDashboard />
       </main>

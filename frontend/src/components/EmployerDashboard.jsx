@@ -6,6 +6,7 @@ import {
 } from '@xyflow/react';
 import JobNode from './flow/JobNode';
 import CandidateNode from './flow/CandidateNode';
+import AssessmentNode from './flow/AssessmentNode';
 import AddStageEdge from './flow/AddStageEdge';
 
 import '@xyflow/react/dist/style.css';
@@ -13,13 +14,14 @@ import '@xyflow/react/dist/style.css';
 const nodeTypes = {
   job: JobNode,
   candidate: CandidateNode,
+  assessment: AssessmentNode,
 };
 
 const edgeTypes = {
   addStageEdge: AddStageEdge,
 };
 
-const EmployerDashboard = ({ job, onNodesChange, onEdgesChange, onCandidateMove, onConnectStages, onMoveToNextStage, onEditJob, onArchiveJob, onShowResume, onAddStage, onEditStage, onDeleteStage }) => {
+const EmployerDashboard = ({ job, onNodesChange, onEdgesChange, onCandidateMove, onConnectStages, onMoveToNextStage, onEditJob, onArchiveJob, onShowResume, onAddStage, onEditStage, onDeleteStage, onCreateAssessment, onEditAssessment, onViewResponses }) => {
   const onConnect = useCallback((params) => {
     const { source, target, sourceHandle } = params;
     if (sourceHandle) {
@@ -35,6 +37,21 @@ const EmployerDashboard = ({ job, onNodesChange, onEdgesChange, onCandidateMove,
     }
     if (node.type === 'candidate') {
       return { ...node, data: { ...node.data, onShowResume, onMoveToNext: (candidateId) => onMoveToNextStage(candidateId, node.id), onEditStage: () => onEditStage(node.id, node.data.stage), onDeleteStage: () => onDeleteStage(node.id) } };
+    }
+    if (node.type === 'assessment') {
+      return { 
+        ...node, 
+        data: { 
+          ...node.data, 
+          onShowResume, 
+          onMoveToNext: (candidateId) => onMoveToNextStage(candidateId, node.id), 
+          onEditStage: () => onEditStage(node.id, node.data.stage, 'assessment'), 
+          onDeleteStage: () => onDeleteStage(node.id),
+          onCreateAssessment: () => onCreateAssessment(node.id),
+          onEditAssessment: () => onEditAssessment(node.id, node.data.assessment),
+          onViewResponses: () => onViewResponses(node.id, node.data.assessment)
+        } 
+      };
     }
     return node;
   });

@@ -2,12 +2,9 @@ import React, { useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { User, GripVertical, FileText, ChevronsRight, Edit, Trash2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useCandidates } from '../../hooks/useCandidates';
 
-const CandidateCard = ({ candidateId, onShowResume, onMoveToNext }) => {
+const CandidateCard = ({ candidate, onShowResume, onMoveToNext }) => {
   const [isHovered, setIsHovered] = useState(false);
-  const { findCandidate } = useCandidates();
-  const candidate = findCandidate(candidateId);
 
   if (!candidate) return null;
 
@@ -21,7 +18,7 @@ const CandidateCard = ({ candidateId, onShowResume, onMoveToNext }) => {
         <div className="flex items-center justify-center w-7 h-7 bg-gray-100 rounded-full">
            <User className="w-4 h-4 text-gray-500" />
         </div>
-        <p className="font-semibold text-gray-700 text-sm truncate">{candidate.name}</p>
+        <p className="font-semibold text-gray-700 text-sm truncate">{candidate.userName || candidate.name || 'Unknown Candidate'}</p>
       </div>
       <Handle
         type="source"
@@ -67,7 +64,7 @@ const CandidateCard = ({ candidateId, onShowResume, onMoveToNext }) => {
 };
 
 const CandidateNode = ({ id, data }) => {
-  const { stage, candidateIds = [], onShowResume, onMoveToNext, onEditStage, onDeleteStage } = data;
+  const { stage, candidates = [], onShowResume, onMoveToNext, onEditStage, onDeleteStage } = data;
 
   return (
     <div className="w-72 bg-white rounded-xl shadow-md border border-gray-200 group/stage">
@@ -85,10 +82,10 @@ const CandidateNode = ({ id, data }) => {
         </div>
       </div>
       <div className="p-2 space-y-2 min-h-[120px]">
-        {candidateIds.map(candidateId => (
-          <CandidateCard key={candidateId} candidateId={candidateId} onShowResume={onShowResume} onMoveToNext={onMoveToNext} />
+        {candidates.map(candidate => (
+          <CandidateCard key={candidate.id} candidate={candidate} onShowResume={onShowResume} onMoveToNext={onMoveToNext} />
         ))}
-        {candidateIds.length === 0 && (
+        {candidates.length === 0 && (
             <div className="flex items-center justify-center h-full min-h-[100px] text-center text-sm text-gray-400 p-4">
                 Drag candidates here
             </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { Edit, Archive, Users, Briefcase } from 'lucide-react';
+import { Edit, Archive, Users, Briefcase, ClipboardList } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const JobNode = ({ data }) => {
   const { title, status, applicants, description, onEdit, onArchive, id } = data;
@@ -31,6 +32,13 @@ const JobNode = ({ data }) => {
             </div>
           </div>
           <div className="flex items-center gap-1">
+            <Link 
+              to={`/assessment/${id}/builder`}
+              className="text-gray-400 hover:text-primary-600 p-2 rounded-full hover:bg-primary-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Manage Assessment"
+            >
+              <ClipboardList className="w-4 h-4" />
+            </Link>
             <button onClick={() => onEdit(data)} className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled={isArchived}>
               <Edit className="w-4 h-4" />
             </button>
@@ -43,6 +51,19 @@ const JobNode = ({ data }) => {
           <p className={`mt-4 text-sm text-gray-700 ${isArchived ? 'text-gray-400' : ''}`}>
             {description}
           </p>
+        )}
+        
+        {/* Assessment Link */}
+        {!isArchived && (
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <Link 
+              to={`/assessment/${id}/builder`}
+              className="inline-flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
+            >
+              <ClipboardList className="w-4 h-4" />
+              Manage Assessment
+            </Link>
+          </div>
         )}
       </div>
       <Handle type="source" position={Position.Bottom} className="w-4 h-4 !bg-gray-300" />
