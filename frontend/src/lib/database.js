@@ -152,7 +152,33 @@ export const dbHelpers = {
   },
 
   async updateJob(id, updates) {
-    return await db.jobs.update(id, { ...updates, updatedAt: new Date() });
+    // Ensure ID is always a number
+    const numericId = typeof id === 'string' ? parseInt(id) : id;
+    console.log('🗄️ Database: updateJob called with ID:', numericId, 'type:', typeof numericId);
+    
+    try {
+      // First, check if the job exists
+      const existingJob = await db.jobs.get(numericId);
+      console.log('🗄️ Database: Existing job before update:', existingJob);
+      
+      if (!existingJob) {
+        console.error('🗄️ Database: Job not found with ID:', numericId);
+        return 0;
+      }
+      
+      const result = await db.jobs.update(numericId, { ...updates, updatedAt: new Date() });
+      console.log('🗄️ Database: updateJob result:', result);
+      
+      // Verify the update worked
+      const updatedJob = await db.jobs.get(numericId);
+      console.log('🗄️ Database: Job after update:', updatedJob);
+      console.log('🗄️ Database: Job flowData after update:', updatedJob?.flowData);
+      
+      return result;
+    } catch (error) {
+      console.error('🗄️ Database: updateJob failed:', error);
+      throw error;
+    }
   },
 
   // Job Stages
@@ -192,6 +218,10 @@ export const dbHelpers = {
 
   async deleteJobStage(id) {
     return await db.jobStages.delete(id);
+  },
+
+  async deleteJobStageByNodeId(nodeId) {
+    return await db.jobStages.where('nodeId').equals(nodeId).delete();
   },
 
   // Candidate Management

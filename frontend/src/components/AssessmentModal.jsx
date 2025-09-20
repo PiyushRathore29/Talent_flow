@@ -2,29 +2,29 @@ import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Eye, EyeOff, Clock, FileText, Hash, CheckSquare, Circle, Upload, Type, AlignLeft } from 'lucide-react';
 
 const QUESTION_TYPES = {
-  SINGLE_CHOICE: 'single-choice',
-  MULTI_CHOICE: 'multi-choice',
-  SHORT_TEXT: 'short-text',
-  LONG_TEXT: 'long-text',
+  MULTIPLE_CHOICE: 'multiple_choice',
+  TEXT: 'text',
+  SHORT_ANSWER: 'short_answer',
+  LONG_TEXT: 'long_text',
   NUMERIC: 'numeric',
   FILE_UPLOAD: 'file-upload'
 };
 
 const QUESTION_TYPE_CONFIG = {
-  [QUESTION_TYPES.SINGLE_CHOICE]: {
+  [QUESTION_TYPES.MULTIPLE_CHOICE]: {
     icon: Circle,
-    label: 'Single Choice',
+    label: 'Multiple Choice',
     description: 'Select one option'
   },
-  [QUESTION_TYPES.MULTI_CHOICE]: {
-    icon: CheckSquare,
-    label: 'Multiple Choice',
-    description: 'Select multiple options'
-  },
-  [QUESTION_TYPES.SHORT_TEXT]: {
+  [QUESTION_TYPES.TEXT]: {
     icon: Type,
     label: 'Short Text',
     description: 'Brief text response'
+  },
+  [QUESTION_TYPES.SHORT_ANSWER]: {
+    icon: Type,
+    label: 'Short Answer',
+    description: 'Brief answer response'
   },
   [QUESTION_TYPES.LONG_TEXT]: {
     icon: AlignLeft,
@@ -56,13 +56,18 @@ const QuestionEditor = ({ question, onUpdate, onDelete, index }) => {
   };
 
   const addOption = () => {
-    const newOptions = [...(localQuestion.options || []), ''];
+    const newOptions = [...(localQuestion.options || [])];
+    newOptions.push({ id: newOptions.length + 1, text: '', isCorrect: false });
     updateField('options', newOptions);
   };
 
   const updateOption = (optionIndex, value) => {
     const newOptions = [...(localQuestion.options || [])];
-    newOptions[optionIndex] = value;
+    if (typeof newOptions[optionIndex] === 'object') {
+      newOptions[optionIndex] = { ...newOptions[optionIndex], text: value };
+    } else {
+      newOptions[optionIndex] = { id: optionIndex + 1, text: value, isCorrect: false };
+    }
     updateField('options', newOptions);
   };
 
@@ -123,18 +128,30 @@ const QuestionEditor = ({ question, onUpdate, onDelete, index }) => {
         </div>
 
         {/* Options for Choice Questions */}
-        {(localQuestion.questionType === QUESTION_TYPES.SINGLE_CHOICE || 
-          localQuestion.questionType === QUESTION_TYPES.MULTI_CHOICE) && (
+        {localQuestion.questionType === QUESTION_TYPES.MULTIPLE_CHOICE && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Options *
+              Options * <span className="text-xs text-gray-500">(Select the correct answer)</span>
             </label>
             <div className="space-y-2">
               {(localQuestion.options || []).map((option, optionIndex) => (
                 <div key={optionIndex} className="flex items-center gap-2">
                   <input
+                    type="radio"
+                    name={`correct-${index}`}
+                    checked={option.isCorrect || false}
+                    onChange={(e) => {
+                      const newOptions = [...(localQuestion.options || [])];
+                      newOptions.forEach((opt, i) => {
+                        opt.isCorrect = i === optionIndex;
+                      });
+                      updateField('options', newOptions);
+                    }}
+                    className="text-green-600"
+                  />
+                  <input
                     type="text"
-                    value={option}
+                    value={typeof option === 'object' ? option.text : option}
                     onChange={(e) => updateOption(optionIndex, e.target.value)}
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder={`Option ${optionIndex + 1}`}
@@ -324,14 +341,29 @@ const AssessmentModal = ({ isOpen, onClose, onSave, assessment }) => {
         setIsRequired(assessment.isRequired !== false);
         setQuestions(assessment.questions || []);
       } else {
-        // Reset form for new assessment
+        // Reset form for new assessment with a default question
         setTitle('');
         setDescription('');
         setInstructions('');
         setTimeLimit('');
         setPassingScore('');
         setIsRequired(true);
-        setQuestions([]);
+        setQuestions([
+          {
+            id: Date.now(),
+            questionType: 'multiple_choice',
+            title: 'Sample Question: What is your experience level?',
+            description: 'Please select your level of experience',
+            options: [
+              { id: 1, text: 'Beginner (0-1 years)', isCorrect: false },
+              { id: 2, text: 'Intermediate (2-4 years)', isCorrect: true },
+              { id: 3, text: 'Advanced (5+ years)', isCorrect: false }
+            ],
+            validation: {},
+            isRequired: true,
+            order: 0
+          }
+        ]);
       }
       setShowPreview(false);
     }
@@ -345,7 +377,10 @@ const AssessmentModal = ({ isOpen, onClose, onSave, assessment }) => {
       questionType,
       title: '',
       description: '',
-      options: questionType === QUESTION_TYPES.SINGLE_CHOICE || questionType === QUESTION_TYPES.MULTI_CHOICE ? [''] : undefined,
+      options: questionType === QUESTION_TYPES.MULTIPLE_CHOICE ? [
+        { id: 1, text: '', isCorrect: false },
+        { id: 2, text: '', isCorrect: false }
+      ] : undefined,
       validation: {},
       isRequired: false,
       order: questions.length

@@ -10,18 +10,19 @@ export const useJobs = () => useContext(JobsContext);
 const reconstructJobFlow = async (job) => {
   try {
     console.log('🔄 Reconstructing flow for job:', job.id);
+    console.log('🗂️ Job object keys:', Object.keys(job));
+    console.log('💾 Job flowData:', job.flowData);
     
     // Use the saved flow data as the primary source of truth
     const savedNodes = job.flowData?.nodes || [];
     const savedEdges = job.flowData?.edges || [];
     
     console.log('📊 Saved flow data - nodes:', savedNodes.length, 'edges:', savedEdges.length);
+    console.log('🔍 Saved nodes details:', savedNodes.map(n => ({ id: n.id, type: n.type, stage: n.data?.stage })));
     
     // If we have saved flow data, use it directly
     if (savedNodes.length > 0) {
       console.log('✅ Using saved flow data directly');
-      console.log('🔍 Saved nodes details:', savedNodes.map(n => ({ id: n.id, type: n.type, position: n.position, stage: n.data?.stage })));
-      console.log('🔍 Saved edges details:', savedEdges.map(e => ({ id: e.id, source: e.source, target: e.target, type: e.type })));
       return {
         nodes: savedNodes,
         edges: savedEdges
@@ -160,27 +161,19 @@ export const JobsProvider = ({ children }) => {
         // Load candidates for each job and populate stage nodes
         for (const jobId of Object.keys(jobsObj)) {
           try {
-            console.log(`🔄 Processing job ${jobId} - nodes before candidate loading:`, jobsObj[jobId].nodes.length);
-            console.log(`🔍 Nodes in job ${jobId}:`, jobsObj[jobId].nodes.map(n => ({ id: n.id, type: n.type, stage: n.data?.stage })));
-            
             const candidates = await dbHelpers.getCandidatesByJob(parseInt(jobId));
             
             // Load assessments for this job
             const assessments = await dbHelpers.getAssessmentsByJob(parseInt(jobId));
-            console.log(`📊 Found ${assessments.length} assessments for job ${jobId}`);
             
             // Update nodes with candidate data and assessment data
             if (jobsObj[jobId].nodes && jobsObj[jobId].nodes.length > 0) {
-              console.log(`🔄 Starting node processing for job ${jobId}...`);
-              jobsObj[jobId].nodes = await Promise.all(jobsObj[jobId].nodes.map(async (node, index) => {
-                console.log(`📍 Processing node ${index}: ${node.id} (type: ${node.type})`);
-                
+              jobsObj[jobId].nodes = await Promise.all(jobsObj[jobId].nodes.map(async (node) => {
                 if (node.type === 'candidate') {
                   // Find candidates for this stage
                   const stageCandidates = candidates.filter(candidate => 
                     candidate.currentStageId === node.id
                   );
-                  console.log(`👥 Found ${stageCandidates.length} candidates for stage ${node.id}`);
                   return {
                     ...node,
                     data: {
@@ -190,48 +183,64 @@ export const JobsProvider = ({ children }) => {
                   };
                 }
                 if (node.type === 'assessment') {
-                  console.log(`🎯 Processing assessment node: ${node.id}`);
                   // Find candidates for this stage
                   const stageCandidates = candidates.filter(candidate => 
                     candidate.currentStageId === node.id
                   );
-                  console.log(`👥 Found ${stageCandidates.length} candidates for assessment stage ${node.id}`);
                   
                   // Find assessment for this stage
                   const stageAssessment = assessments.find(assessment => 
                     assessment.stageId === node.id
                   );
-                  console.log(`📝 Found assessment for stage ${node.id}:`, stageAssessment ? stageAssessment.title : 'NONE');
                   
-                  // If assessment exists, load its questions
+                  // If assessment exists, load its questions and check completion status
                   let assessmentWithQuestions = stageAssessment;
+                  let candidatesWithAssessmentStatus = stageCandidates;
+                  
                   if (stageAssessment) {
                     try {
                       const questions = await dbHelpers.getQuestionsByAssessment(stageAssessment.id);
                       assessmentWithQuestions = { ...stageAssessment, questions };
-                      console.log(`❓ Loaded ${questions.length} questions for assessment ${stageAssessment.id}`);
+                      
+                      // Check assessment completion for each candidate
+                      candidatesWithAssessmentStatus = await Promise.all(
+                        stageCandidates.map(async (candidate) => {
+                          try {
+                            const response = await dbHelpers.getCandidateAssessmentResponse(
+                              stageAssessment.id, 
+                              candidate.userId || candidate.id
+                            );
+                            return {
+                              ...candidate,
+                              assessmentCompleted: !!response?.isCompleted,
+                              assessmentScore: response?.score || 0
+                            };
+                          } catch (error) {
+                            console.error(`Failed to check assessment completion for candidate ${candidate.id}:`, error);
+                            return {
+                              ...candidate,
+                              assessmentCompleted: false,
+                              assessmentScore: 0
+                            };
+                          }
+                        })
+                      );
                     } catch (error) {
                       console.error(`Failed to load questions for assessment ${stageAssessment.id}:`, error);
                     }
                   }
                   
-                  const processedNode = {
+                  return {
                     ...node,
                     data: {
                       ...node.data,
-                      candidates: stageCandidates,
+                      candidates: candidatesWithAssessmentStatus,
                       assessment: assessmentWithQuestions || null
                     }
                   };
-                  console.log(`✅ Processed assessment node ${node.id}:`, processedNode);
-                  return processedNode;
                 }
-                console.log(`🔄 Processing regular node: ${node.id} (type: ${node.type})`);
                 return node;
               }));
-              
-              console.log(`✅ Finished processing job ${jobId} - nodes after processing:`, jobsObj[jobId].nodes.length);
-              console.log(`🔍 Final nodes for job ${jobId}:`, jobsObj[jobId].nodes.map(n => ({ id: n.id, type: n.type, stage: n.data?.stage })));
               
               // Update total applicants count
               const totalApplicants = candidates.length;
@@ -448,10 +457,25 @@ export const JobsProvider = ({ children }) => {
 
   const updateJobFlow = useCallback(async (jobId, flowData) => {
     try {
-      await dbHelpers.updateJob(jobId, {
+      console.log('🔄 updateJobFlow called with jobId:', jobId, 'type:', typeof jobId);
+      console.log('📊 Flow data nodes count:', flowData.nodes?.length || 0);
+      console.log('📊 Flow data edges count:', flowData.edges?.length || 0);
+      
+      // Ensure jobId is a number (Dexie auto-increment IDs are numbers)
+      const numericJobId = parseInt(jobId);
+      console.log('🔢 Converting jobId to number:', numericJobId);
+      
+      await dbHelpers.updateJob(numericJobId, {
         flowData,
         updatedAt: new Date().toISOString()
       });
+      
+      console.log('✅ Job flow updated in database');
+      
+      // Let's verify what was actually saved
+      const verifyJob = await dbHelpers.getJobById(numericJobId);
+      console.log('🔍 Verification - Job flowData after update:', verifyJob?.flowData);
+      console.log('🔍 Verification - Job flowData nodes count:', verifyJob?.flowData?.nodes?.length || 0);
       
       setJobs(prev => {
         const job = prev[jobId];
@@ -466,6 +490,8 @@ export const JobsProvider = ({ children }) => {
           }
         };
       });
+      
+      console.log('✅ Job flow updated in state');
     } catch (error) {
       console.error('Failed to update job flow:', error);
     }

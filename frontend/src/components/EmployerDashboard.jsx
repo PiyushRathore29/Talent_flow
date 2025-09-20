@@ -49,7 +49,7 @@ const EmployerDashboard = ({ job, onNodesChange, onEdgesChange, onCandidateMove,
           onDeleteStage: () => onDeleteStage(node.id),
           onCreateAssessment: () => onCreateAssessment(node.id),
           onEditAssessment: () => onEditAssessment(node.id, node.data.assessment),
-          onViewResponses: () => onViewResponses(node.id, node.data.assessment)
+          onViewResponses: (assessment, candidate) => onViewResponses(assessment, candidate)
         } 
       };
     }

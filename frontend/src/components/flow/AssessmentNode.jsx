@@ -1,7 +1,111 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Handle, Position } from '@xyflow/react';
-import { ClipboardList, Plus, Settings, Eye, Users, Clock, CheckCircle } from 'lucide-react';
+import { ClipboardList, Plus, Settings, Eye, Users, Clock, CheckCircle, FileText, ChevronsRight, GripVertical, User } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+
+const AssessmentCandidateCard = ({ candidate, assessment, onShowResume, onMoveToNext, onViewResponses }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const cardRef = useRef(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    if (isHovered && cardRef.current) {
+      const rect = cardRef.current.getBoundingClientRect();
+      setMenuPosition({
+        top: rect.bottom + 8,
+        left: rect.left + rect.width / 2
+      });
+    }
+  }, [isHovered]);
+
+  if (!candidate) return null;
+
+  return (
+    <>
+      <div
+        ref={cardRef}
+        className="bg-white p-2.5 rounded-lg shadow-sm border border-gray-200 flex justify-between items-center group/card relative"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+      <div className="flex items-center gap-2 overflow-hidden">
+        <div className={`w-2 h-2 rounded-full ${
+          candidate.assessmentCompleted ? 'bg-green-500' : 'bg-yellow-500'
+        }`} />
+        <div className="flex items-center justify-center w-7 h-7 bg-gray-100 rounded-full">
+           <User className="w-4 h-4 text-gray-500" />
+        </div>
+        <p className="font-semibold text-gray-700 text-sm truncate">{candidate.userName || candidate.name || 'Unknown Candidate'}</p>
+        {candidate.assessmentCompleted && (
+          <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs">
+            {candidate.assessmentScore || 'N/A'}%
+          </span>
+        )}
+      </div>
+      <Handle
+        type="source"
+        position={Position.Right}
+        id={candidate.id}
+        className="!w-6 !h-6 !bg-orange-400 !border-2 !border-white group-hover/card:!bg-orange-500 cursor-move"
+      >
+        <GripVertical className="w-4 h-4 text-orange-600 group-hover/card:text-white" />
+      </Handle>
+
+      {/* Portal for hover menu */}
+      {isHovered && createPortal(
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="fixed w-48 bg-white rounded-md shadow-2xl border border-gray-100 p-1.5"
+            style={{ 
+              zIndex: 9999,
+              top: menuPosition.top,
+              left: menuPosition.left,
+              transform: 'translateX(-50%)'
+            }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+          >
+            <ul className="space-y-1">
+              <li>
+                <button 
+                  onClick={() => onShowResume(candidate)} 
+                  className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                >
+                  <FileText className="w-4 h-4 text-gray-500" /> View Resume
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => onMoveToNext(candidate.id)} 
+                  className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                >
+                  <ChevronsRight className="w-4 h-4 text-gray-500" /> Move to Next
+                </button>
+              </li>
+              {candidate.assessmentCompleted && assessment && (
+                <li>
+                  <button 
+                    onClick={() => onViewResponses(assessment, candidate)} 
+                    className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                  >
+                    <Eye className="w-4 h-4 text-gray-500" /> View Responses
+                  </button>
+                </li>
+              )}
+            </ul>
+          </motion.div>
+        </AnimatePresence>,
+        document.body
+      )}
+      </div>
+    </>
+  );
+};
 
 const AssessmentNode = ({ data }) => {
   const {
@@ -26,7 +130,8 @@ const AssessmentNode = ({ data }) => {
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-white rounded-xl shadow-lg border-2 border-orange-200 min-w-[280px] max-w-[320px]"
+      className="bg-white rounded-xl shadow-lg border-2 border-orange-200 min-w-[280px] max-w-[320px] relative"
+      style={{ overflow: 'visible' }}
     >
       <Handle
         type="target"
@@ -83,7 +188,7 @@ const AssessmentNode = ({ data }) => {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="p-4">
+            <div className="p-4 relative" style={{ overflow: 'visible' }}>
               {/* Assessment Actions */}
               <div className="mb-4 space-y-2">
                 {!assessment ? (
@@ -97,14 +202,14 @@ const AssessmentNode = ({ data }) => {
                 ) : (
                   <div className="flex gap-2">
                     <button
-                      onClick={onEditAssessment}
+                      onClick={() => onEditAssessment(assessment)}
                       className="flex-1 flex items-center justify-center gap-2 bg-orange-100 text-orange-700 py-2 px-3 rounded-lg text-sm hover:bg-orange-200 transition-colors"
                     >
                       <Settings className="w-4 h-4" />
                       Edit
                     </button>
                     <button
-                      onClick={onViewResponses}
+                      onClick={() => onViewResponses(assessment)}
                       className="flex-1 flex items-center justify-center gap-2 bg-blue-100 text-blue-700 py-2 px-3 rounded-lg text-sm hover:bg-blue-200 transition-colors"
                     >
                       <Eye className="w-4 h-4" />
@@ -145,45 +250,19 @@ const AssessmentNode = ({ data }) => {
 
                 {candidates.length === 0 ? (
                   <div className="text-center py-4 text-gray-400 text-xs">
-                    No candidates in this stage
+                    Drag candidates here
                   </div>
                 ) : (
-                  <div className="max-h-40 overflow-y-auto space-y-2">
+                  <div className="space-y-2 min-h-[120px] relative" style={{ overflow: 'visible' }}>
                     {candidates.map((candidate) => (
-                      <div
-                        key={candidate.id}
-                        className="bg-gray-50 p-2 rounded border flex items-center justify-between text-xs group/candidate"
-                      >
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <div className={`w-2 h-2 rounded-full ${
-                            candidate.assessmentCompleted ? 'bg-green-500' : 'bg-yellow-500'
-                          }`} />
-                          <span className="font-medium text-gray-700 truncate">
-                            {candidate.userName || candidate.name || 'Unknown'}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center gap-1">
-                          {candidate.assessmentCompleted && (
-                            <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs">
-                              {candidate.assessmentScore || 'N/A'}%
-                            </span>
-                          )}
-                          <button
-                            onClick={() => onShowResume(candidate)}
-                            className="p-1 text-gray-400 hover:text-gray-600 opacity-0 group-hover/candidate:opacity-100 transition-all"
-                          >
-                            <Eye className="w-3 h-3" />
-                          </button>
-                        </div>
-
-                        <Handle
-                          type="source"
-                          position={Position.Right}
-                          id={candidate.id}
-                          className="!w-4 !h-4 !bg-orange-400 !border-2 !border-white opacity-0 group-hover/candidate:opacity-100 transition-opacity cursor-move"
-                        />
-                      </div>
+                      <AssessmentCandidateCard 
+                        key={candidate.id} 
+                        candidate={candidate} 
+                        assessment={assessment}
+                        onShowResume={onShowResume} 
+                        onMoveToNext={onMoveToNext} 
+                        onViewResponses={onViewResponses}
+                      />
                     ))}
                   </div>
                 )}

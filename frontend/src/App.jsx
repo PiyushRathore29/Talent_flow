@@ -14,6 +14,8 @@ import CandidateDashboardPage from './pages/CandidateDashboardPage';
 import CandidateJobsPage from './pages/CandidateJobsPage';
 import EmployerDashboardPage from './pages/EmployerDashboardPage';
 import AssessmentPage from './pages/AssessmentPage';
+import AssessmentTakePage from './pages/AssessmentTakePage';
+import AssessmentResponsesViewer from './pages/AssessmentResponsesViewer';
 import JobDetailPage from './pages/JobDetailPage';
 import CandidatesPage from './pages/CandidatesPage';
 import CandidateProfilePage from './pages/CandidateProfilePage';
@@ -123,9 +125,14 @@ function AppRoutes() {
             } />
             
             {/* Assessment routes */}
-            <Route path="/assessment/:jobId" element={
-              <ProtectedRoute>
-                <AssessmentPage />
+            <Route path="/assessment/:assessmentId" element={
+              <ProtectedRoute requiredRole="candidate">
+                <AssessmentTakePage />
+              </ProtectedRoute>
+            } />
+            <Route path="/assessment/:assessmentId/responses" element={
+              <ProtectedRoute requiredRole="hr">
+                <AssessmentResponsesViewer />
               </ProtectedRoute>
             } />
             <Route path="/assessment/:jobId/builder" element={

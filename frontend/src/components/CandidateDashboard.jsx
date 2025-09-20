@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useJobs } from '../hooks/useJobs';
 import { dbHelpers } from '../lib/database';
@@ -8,9 +8,17 @@ import { FileText, Clock, CheckCircle, MapPin, DollarSign, Calendar, Briefcase, 
 const CandidateDashboard = () => {
   const { user } = useAuth();
   const { jobs, loading: jobsLoading } = useJobs();
+  const navigate = useNavigate();
   const [applications, setApplications] = useState([]);
   const [candidates, setCandidates] = useState([]);
+  const [statusDisplays, setStatusDisplays] = useState({});
   const [loading, setLoading] = useState(true);
+
+  // Helper function to get current stage for an application
+  const getCurrentStageId = (jobId) => {
+    const candidateRecord = candidates.find(c => c.jobId === parseInt(jobId));
+    return candidateRecord?.currentStageId;
+  };
 
   useEffect(() => {
     const loadApplications = async () => {
@@ -27,6 +35,15 @@ const CandidateDashboard = () => {
         // Load candidate records that show current stage
         const candidateRecords = await dbHelpers.getCandidatesByUserId(user.id);
         setCandidates(candidateRecords);
+
+        // Load status displays for all applications
+        const statusDisplaysMap = {};
+        for (const app of userApplications) {
+          const currentStageId = getCurrentStageId(app.jobId);
+          const statusDisplay = await getStatusDisplay(app.status, currentStageId, app.jobId);
+          statusDisplaysMap[app.id] = statusDisplay;
+        }
+        setStatusDisplays(statusDisplaysMap);
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
       } finally {
@@ -56,9 +73,96 @@ const CandidateDashboard = () => {
     return () => clearInterval(refreshInterval);
   }, [user]);
 
-  const getStatusDisplay = (status, currentStageId) => {
+  const getStatusDisplay = async (status, currentStageId, jobId) => {
     // If we have a candidate record with stage information, use that
-    if (currentStageId) {
+    if (currentStageId && jobId) {
+      const job = jobs[jobId];
+      
+      // Find the actual stage data to check its type and name
+      const stageNode = job?.nodes?.find(node => node.id === currentStageId);
+      
+      if (stageNode) {
+        const stageName = stageNode.data?.stage?.toLowerCase() || '';
+        const stageType = stageNode.type;
+        
+        // Check if it's an assessment stage by type or name
+        if (stageType === 'assessment' || stageName.includes('assessment') || stageName.includes('test') || stageName.includes('oa')) {
+          // Check if the assessment has been completed by this candidate
+          try {
+            const assessments = await dbHelpers.getAssessmentsByJob(parseInt(jobId));
+            const stageAssessment = assessments.find(assessment => assessment.stageId === currentStageId);
+            
+            if (stageAssessment) {
+              const response = await dbHelpers.getCandidateAssessmentResponse(stageAssessment.id, user.id);
+              if (response && response.isCompleted) {
+                return {
+                  icon: <CheckCircle className="w-4 h-4 text-green-500" />,
+                  text: `Assessment Completed (${response.score}%)`,
+                  className: 'bg-green-100 text-green-700',
+                  isAssessment: false // Already completed, don't show button
+                };
+              }
+            }
+          } catch (error) {
+            console.error('Error checking assessment completion:', error);
+          }
+          
+          return {
+            icon: <FileText className="w-4 h-4 text-indigo-500" />,
+            text: 'Assessment Required',
+            className: 'bg-indigo-100 text-indigo-700',
+            isAssessment: true
+          };
+        }
+        
+        // Check other stage types based on name
+        if (stageName.includes('applied')) {
+          return {
+            icon: <CheckCircle className="w-4 h-4 text-blue-500" />,
+            text: 'Application Submitted',
+            className: 'bg-blue-100 text-blue-700'
+          };
+        } else if (stageName.includes('screening') || stageName.includes('review')) {
+          return {
+            icon: <FileText className="w-4 h-4 text-orange-500" />,
+            text: 'Under Review',
+            className: 'bg-orange-100 text-orange-700'
+          };
+        } else if (stageName.includes('interview')) {
+          return {
+            icon: <Clock className="w-4 h-4 text-purple-500" />,
+            text: 'Interview Stage',
+            className: 'bg-purple-100 text-purple-700'
+          };
+        } else if (stageName.includes('offer')) {
+          return {
+            icon: <FileText className="w-4 h-4 text-green-500" />,
+            text: 'Offer Stage',
+            className: 'bg-green-100 text-green-700'
+          };
+        } else if (stageName.includes('hired') || stageName.includes('accepted')) {
+          return {
+            icon: <CheckCircle className="w-4 h-4 text-green-600" />,
+            text: 'Hired',
+            className: 'bg-green-100 text-green-700'
+          };
+        } else if (stageName.includes('rejected') || stageName.includes('declined')) {
+          return {
+            icon: <Clock className="w-4 h-4 text-red-500" />,
+            text: 'Not Selected',
+            className: 'bg-red-100 text-red-700'
+          };
+        } else {
+          // Generic stage based on the stage name
+          return {
+            icon: <Clock className="w-4 h-4 text-gray-500" />,
+            text: stageName.charAt(0).toUpperCase() + stageName.slice(1),
+            className: 'bg-gray-100 text-gray-700'
+          };
+        }
+      }
+      
+      // Fallback for legacy stage ID checking
       const stageId = currentStageId.toLowerCase();
       if (stageId.includes('applied')) {
         return {
@@ -147,12 +251,6 @@ const CandidateDashboard = () => {
     }
   };
 
-  // Helper function to get current stage for an application
-  const getCurrentStage = (jobId) => {
-    const candidateRecord = candidates.find(c => c.jobId === parseInt(jobId));
-    return candidateRecord?.currentStageId;
-  };
-
   // Handle assessment navigation
   const handleStartAssessment = async (jobId, stageId) => {
     try {
@@ -165,8 +263,7 @@ const CandidateDashboard = () => {
       if (stageAssessment) {
         console.log('📝 Found assessment:', stageAssessment);
         // Navigate to assessment page
-        // For now, we'll show an alert - later we'll create a proper assessment page
-        alert(`Assessment found: ${stageAssessment.title}\n\nThis will open the assessment interface (coming soon!)`);
+        navigate(`/assessment/${stageAssessment.id}`);
       } else {
         console.log('❌ No assessment found for stage:', stageId);
         alert('No assessment found for this stage. Please contact HR.');
@@ -242,8 +339,13 @@ const CandidateDashboard = () => {
                     <tbody>
                       {applications.map((app, index) => {
                         const job = jobs[app.jobId];
-                        const currentStageId = getCurrentStage(app.jobId);
-                        const statusDisplay = getStatusDisplay(app.status, currentStageId);
+                        const currentStageId = getCurrentStageId(app.jobId);
+                        const statusDisplay = statusDisplays[app.id] || {
+                          icon: <Clock className="w-4 h-4 text-gray-500" />,
+                          text: 'Loading...',
+                          className: 'bg-gray-100 text-gray-700',
+                          isAssessment: false
+                        };
                         return (
                           <tr key={app.id} className={index < applications.length - 1 ? 'border-b' : ''}>
                             <td className="p-6 font-inter font-semibold text-primary-500">

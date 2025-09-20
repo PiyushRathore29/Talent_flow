@@ -5,7 +5,7 @@ import { AnimatePresence } from 'framer-motion';
 import { useJobs } from '../hooks/useJobs';
 import { useAuth } from '../contexts/AuthContext';
 import { dbHelpers } from '../lib/database';
-const { createJobStage, updateJobStage, getJobStages, createAssessment, createAssessmentQuestion, getQuestionsByAssessment } = dbHelpers;
+const { createJobStage, updateJobStage, getJobStages, deleteJobStageByNodeId, createAssessment, createAssessmentQuestion, getQuestionsByAssessment } = dbHelpers;
 import EmployerDashboard from '../components/EmployerDashboard';
 import DashboardSidebar from '../components/DashboardSidebar';
 import JobModal from '../components/JobModal';
@@ -205,6 +205,7 @@ const EmployerDashboardPage = () => {
           console.log('Updated stage in database:', stageToUpdate.id);
         }
         
+        // Update both the visual flow and persist to database
         updateJobFlow(jobId, { nodes: updatedNodes, edges: activeJob.edges });
       } else { // Adding new stage
         if (!stageEdge) {
@@ -278,7 +279,9 @@ const EmployerDashboardPage = () => {
             { id: `${newNode.id}-${target}`, source: newNode.id, target, type: 'addStageEdge' },
           ]);
         
+        // Update both the visual flow and persist to database
         updateJobFlow(jobId, { nodes: updatedNodes, edges: updatedEdges });
+        console.log('✅ Updated job flow with new stage');
       }
     } catch (error) {
       console.error('Failed to save stage:', error);
@@ -305,7 +308,7 @@ const EmployerDashboardPage = () => {
     setIsStageModalOpen(true);
   }, []);
 
-  const handleDeleteStage = useCallback((stageId) => {
+  const handleDeleteStage = useCallback(async (stageId) => {
     if (!activeJob) return;
 
     const stageToDelete = activeJob.nodes.find(n => n.id === stageId);
@@ -315,22 +318,33 @@ const EmployerDashboardPage = () => {
       return;
     }
 
-    const incomingEdge = activeJob.edges.find(e => e.target === stageId);
-    const outgoingEdge = activeJob.edges.find(e => e.source === stageId);
+    try {
+      // Delete the stage from the database
+      await deleteJobStageByNodeId(stageId);
+      console.log('✅ Deleted stage from database:', stageId);
 
-    const remainingNodes = activeJob.nodes.filter(n => n.id !== stageId);
-    let remainingEdges = activeJob.edges.filter(e => e.source !== stageId && e.target !== stageId);
+      const incomingEdge = activeJob.edges.find(e => e.target === stageId);
+      const outgoingEdge = activeJob.edges.find(e => e.source === stageId);
 
-    if (incomingEdge && outgoingEdge) {
-      remainingEdges.push({
-        id: `${incomingEdge.source}-${outgoingEdge.target}`,
-        source: incomingEdge.source,
-        target: outgoingEdge.target,
-        type: 'addStageEdge',
-      });
+      const remainingNodes = activeJob.nodes.filter(n => n.id !== stageId);
+      let remainingEdges = activeJob.edges.filter(e => e.source !== stageId && e.target !== stageId);
+
+      if (incomingEdge && outgoingEdge) {
+        remainingEdges.push({
+          id: `${incomingEdge.source}-${outgoingEdge.target}`,
+          source: incomingEdge.source,
+          target: outgoingEdge.target,
+          type: 'addStageEdge',
+        });
+      }
+      
+      // Update both the visual flow and persist to database
+      updateJobFlow(jobId, { nodes: remainingNodes, edges: remainingEdges });
+      console.log('✅ Updated job flow after stage deletion');
+    } catch (error) {
+      console.error('Failed to delete stage:', error);
+      // TODO: Show error message to user
     }
-    
-    updateJobFlow(jobId, { nodes: remainingNodes, edges: remainingEdges });
   }, [jobId, activeJob, updateJobFlow]);
 
   const handleShowResume = (candidate) => {
@@ -355,10 +369,13 @@ const EmployerDashboardPage = () => {
     setIsAssessmentModalOpen(true);
   }, []);
 
-  const handleViewResponses = useCallback((stageId, assessment) => {
-    // TODO: Implement responses viewer
-    console.log('View responses for assessment:', assessment);
-  }, []);
+  const handleViewResponses = useCallback((assessment, candidate = null) => {
+    // Navigate to assessment responses viewer
+    const url = candidate 
+      ? `/assessment/${assessment.id}/responses?candidate=${candidate.id}`
+      : `/assessment/${assessment.id}/responses`;
+    navigate(url);
+  }, [navigate]);
 
   const handleCloseAssessmentModal = () => {
     setIsAssessmentModalOpen(false);
