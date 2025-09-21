@@ -3,7 +3,7 @@ import { Handle, Position } from '@xyflow/react';
 import { User, GripVertical, FileText, ChevronsRight, Edit, Trash2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
-const CandidateCard = ({ candidate, onShowResume, onMoveToNext }) => {
+const CandidateCard = ({ candidate, stage, onShowResume, onMoveToNext }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   if (!candidate) return null;
@@ -49,7 +49,7 @@ const CandidateCard = ({ candidate, onShowResume, onMoveToNext }) => {
               </li>
               <li>
                 <button 
-                  onClick={() => onMoveToNext(candidate.id)} 
+                  onClick={() => onMoveToNext(candidate.id, stage)} 
                   className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
                 >
                   <ChevronsRight className="w-4 h-4 text-gray-500" /> Move to Next
@@ -64,14 +64,14 @@ const CandidateCard = ({ candidate, onShowResume, onMoveToNext }) => {
 };
 
 const CandidateNode = ({ id, data }) => {
-  const { stage, candidates = [], onShowResume, onMoveToNext, onEditStage, onDeleteStage } = data;
+  const { stage, stageName, candidates = [], onShowResume, onMoveToNext, onEditStage, onDeleteStage } = data;
 
   return (
     <div className="w-72 bg-white rounded-xl shadow-md border border-gray-200 group/stage">
       <Handle type="target" position={Position.Top} id={`${id}-top`} className="!w-3 !h-3 !bg-teal-500 !border-2 !border-white" />
       <Handle type="target" position={Position.Left} id={id} className="!w-3 !h-3 !bg-teal-500 !border-2 !border-white" />
       <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-        <h4 className="font-semibold text-gray-400 uppercase text-xs tracking-wider flex-1">{stage}</h4>
+        <h4 className="font-semibold text-gray-400 uppercase text-xs tracking-wider flex-1">{stageName || stage}</h4>
         <div className="flex items-center opacity-0 group-hover/stage:opacity-100 transition-opacity">
             <button onClick={onEditStage} className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100">
                 <Edit className="w-3.5 h-3.5" />
@@ -83,7 +83,7 @@ const CandidateNode = ({ id, data }) => {
       </div>
       <div className="p-2 space-y-2 min-h-[120px]">
         {candidates.map(candidate => (
-          <CandidateCard key={candidate.id} candidate={candidate} onShowResume={onShowResume} onMoveToNext={onMoveToNext} />
+          <CandidateCard key={candidate.id} candidate={candidate} stage={stage} onShowResume={onShowResume} onMoveToNext={onMoveToNext} />
         ))}
         {candidates.length === 0 && (
             <div className="flex items-center justify-center h-full min-h-[100px] text-center text-sm text-gray-400 p-4">

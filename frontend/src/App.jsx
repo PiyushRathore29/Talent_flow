@@ -3,26 +3,30 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CandidateProvider } from './hooks/useCandidates';
 import { JobsProvider } from './hooks/useJobs';
+
+// Public pages
 import AboutPage from './pages/AboutPage';
-import ProjectsPage from './pages/ProjectsPage';
 import ServicesPage from './pages/ServicesPage';
 import SignUpPage from './pages/SignUpPage';
 import SignInPage from './pages/SignInPage';
-import CandidateSignUpPage from './pages/CandidateSignUpPage';
-import EmployerSignUpPage from './pages/EmployerSignUpPage';
-import CandidateDashboardPage from './pages/CandidateDashboardPage';
-import CandidateJobsPage from './pages/CandidateJobsPage';
-import EmployerDashboardPage from './pages/EmployerDashboardPage';
-import AssessmentPage from './pages/AssessmentPage';
-import AssessmentTakePage from './pages/AssessmentTakePage';
-import AssessmentResponsesViewer from './pages/AssessmentResponsesViewer';
+
+// Dashboard and main pages
+import DashboardPage from './pages/DashboardPage';
+import JobsPage from './pages/JobsPage';
 import JobDetailPage from './pages/JobDetailPage';
+import JobFlowPage from './pages/JobFlowPage';
 import CandidatesPage from './pages/CandidatesPage';
 import CandidateProfilePage from './pages/CandidateProfilePage';
-import AssessmentBuilder from './components/AssessmentBuilder';
+import AssessmentsPage from './pages/AssessmentsPage';
+import AssessmentBuilderPage from './pages/AssessmentBuilderPage';
+import AssessmentTakePage from './pages/AssessmentTakePage';
+import DatabaseSeederPage from './pages/DatabaseSeederPage';
+
+// Development tools
+import MSWTester from './components/MSWTester';
 
 // Protected route component
-const ProtectedRoute = ({ children, requiredRole = null }) => {
+const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
   
   if (loading) {
@@ -35,10 +39,6 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
   
   if (!user) {
     return <Navigate to="/signin" replace />;
-  }
-  
-  if (requiredRole && user.role !== requiredRole) {
-    return <Navigate to={user.role === 'hr' ? '/dashboard/employer' : '/dashboard/candidate'} replace />;
   }
   
   return children;
@@ -71,8 +71,6 @@ function AppRoutes() {
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<AboutPage />} />
-            <Route path="/jobs" element={<ProjectsPage />} />
-            <Route path="/jobs/:jobId" element={<JobDetailPage />} />
             <Route path="/features" element={<ServicesPage />} />
             <Route path="/about" element={<AboutPage />} />
             
@@ -80,73 +78,77 @@ function AppRoutes() {
             <Route path="/signup" element={<PublicRoute><SignUpPage /></PublicRoute>} />
             <Route path="/signin" element={<PublicRoute><SignInPage /></PublicRoute>} />
             
-            {/* Legacy signup routes - redirect to new signup */}
-            <Route path="/signup/candidate" element={<Navigate to="/signup" replace />} />
-            <Route path="/signup/employer" element={<Navigate to="/signup" replace />} />
+            {/* Development tools */}
+            <Route path="/msw-tester" element={<MSWTester />} />
+            <Route path="/seed-database" element={<DatabaseSeederPage />} />
             
-            {/* Protected candidate routes */}
-            <Route path="/dashboard/candidate" element={
-              <ProtectedRoute requiredRole="candidate">
-                <CandidateDashboardPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/candidate/jobs" element={
-              <ProtectedRoute requiredRole="candidate">
-                <CandidateJobsPage />
+            {/* Main application routes - matching API patterns */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <DashboardPage />
               </ProtectedRoute>
             } />
             
-            {/* Protected HR routes */}
-            <Route path="/dashboard/employer" element={
-              <ProtectedRoute requiredRole="hr">
-                <Navigate to="/dashboard/employer/overview" replace />
+            {/* Jobs routes - GET /jobs, POST /jobs, PATCH /jobs/:id, PATCH /jobs/:id/reorder */}
+            <Route path="/jobs" element={
+              <ProtectedRoute>
+                <JobsPage />
               </ProtectedRoute>
             } />
-            <Route path="/dashboard/employer/overview" element={
-              <ProtectedRoute requiredRole="hr">
-                <EmployerDashboardPage />
+            <Route path="/jobs/:jobId" element={
+              <ProtectedRoute>
+                <JobDetailPage />
               </ProtectedRoute>
             } />
-            <Route path="/dashboard/employer/:jobId" element={
-              <ProtectedRoute requiredRole="hr">
-                <EmployerDashboardPage />
+            <Route path="/jobs/:jobId/flow" element={
+              <ProtectedRoute>
+                <JobFlowPage />
               </ProtectedRoute>
             } />
             
+            {/* Candidates routes - GET /candidates, POST /candidates, PATCH /candidates/:id, GET /candidates/:id/timeline */}
             <Route path="/candidates" element={
-              <ProtectedRoute requiredRole="hr">
+              <ProtectedRoute>
                 <CandidatesPage />
               </ProtectedRoute>
             } />
             <Route path="/candidates/:candidateId" element={
-              <ProtectedRoute requiredRole="hr">
+              <ProtectedRoute>
+                <CandidateProfilePage />
+              </ProtectedRoute>
+            } />
+            <Route path="/candidates/:candidateId/timeline" element={
+              <ProtectedRoute>
                 <CandidateProfilePage />
               </ProtectedRoute>
             } />
             
-            {/* Assessment routes */}
-            <Route path="/assessment/:assessmentId" element={
-              <ProtectedRoute requiredRole="candidate">
+            {/* Assessments routes - GET /assessments/:jobId, PUT /assessments/:jobId, POST /assessments/:jobId/submit */}
+            <Route path="/assessments" element={
+              <ProtectedRoute>
+                <AssessmentsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/assessments/:jobId" element={
+              <ProtectedRoute>
+                <AssessmentBuilderPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/assessments/:jobId/take" element={
+              <ProtectedRoute>
                 <AssessmentTakePage />
               </ProtectedRoute>
             } />
-            <Route path="/assessment/:assessmentId/responses" element={
-              <ProtectedRoute requiredRole="hr">
-                <AssessmentResponsesViewer />
+            <Route path="/assessments/:jobId/submit" element={
+              <ProtectedRoute>
+                <AssessmentTakePage />
               </ProtectedRoute>
             } />
-            <Route path="/assessment/:jobId/builder" element={
-              <ProtectedRoute requiredRole="hr">
-                <div className="min-h-screen">
-                  <AssessmentBuilder />
-                </div>
-              </ProtectedRoute>
-            } />
-            <Route path="/assessment/:jobId/take" element={
-              <ProtectedRoute requiredRole="candidate">
-                <AssessmentPage />
-              </ProtectedRoute>
-            } />
+            
+            {/* Redirect legacy routes */}
+            <Route path="/dashboard/employer" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard/candidate" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/projects" element={<Navigate to="/jobs" replace />} />
             
             {/* Catch all route */}
             <Route path="*" element={<Navigate to="/" replace />} />

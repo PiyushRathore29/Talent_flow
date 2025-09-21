@@ -1,217 +1,228 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { useJobs } from '../hooks/useJobs';
-import { dbHelpers } from '../lib/database';
-import Header from '../components/Header';
 import AuthenticatedHeader from '../components/AuthenticatedHeader';
 import Footer from '../components/Footer';
-import { Briefcase, MapPin, Clock, DollarSign, CheckCircle, Loader } from 'lucide-react';
 
 const JobDetailPage = () => {
   const { jobId } = useParams();
-  const { user } = useAuth();
-  const { jobs } = useJobs();
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [hasApplied, setHasApplied] = useState(false);
-  const [applying, setApplying] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const loadJobData = async () => {
+    const fetchJob = async () => {
       try {
-        // Get job from jobs context or database
-        const jobData = jobs[jobId];
-        if (jobData) {
-          setJob(jobData.details);
-          
-          // Check if user has already applied (for candidates)
-          if (user && user.role === 'candidate') {
-            const userApplications = await dbHelpers.getApplicationsByCandidate(user.id);
-            const applicationExists = userApplications.some(app => app.jobId === parseInt(jobId));
-            setHasApplied(applicationExists);
+        setLoading(true);
+        const response = await fetch(`/api/jobs/${jobId}`);
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            setError('Job not found');
+          } else {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
           }
+          return;
         }
-      } catch (error) {
-        console.error('Failed to load job data:', error);
+        
+        const data = await response.json();
+        setJob(data.data);
+        setError(null);
+      } catch (err) {
+        setError(err.message);
+        console.error('Failed to fetch job:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    loadJobData();
-  }, [jobId, jobs, user]);
-
-  const handleApply = async () => {
-    if (!user || user.role !== 'candidate') return;
-    
-    setApplying(true);
-    try {
-      // Create application record
-      const applicationData = {
-        jobId: parseInt(jobId),
-        candidateId: user.id,
-        candidateName: `${user.firstName} ${user.lastName}`,
-        candidateEmail: user.email,
-        status: 'Applied',
-        appliedAt: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-
-      await dbHelpers.createApplication(applicationData);
-
-      // Create candidate record for HR to see in kanban board
-      const candidateData = {
-        companyId: job.companyId,
-        jobId: parseInt(jobId),
-        name: `${user.firstName} ${user.lastName}`,
-        email: user.email,
-        phone: user.phone || '',
-        currentStageId: `job-${jobId}-stage-applied`, // Assuming this is the applied stage ID
-        appliedDate: new Date().toISOString(),
-        createdAt: new Date().toISOString()
-      };
-
-      await dbHelpers.createCandidate(candidateData, user.id);
-      
-      setHasApplied(true);
-    } catch (error) {
-      console.error('Failed to apply to job:', error);
-    } finally {
-      setApplying(false);
+    if (jobId) {
+      fetchJob();
     }
-  };
+  }, [jobId]);
 
   if (loading) {
     return (
-      <>
-        {user ? <AuthenticatedHeader /> : <Header />}
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="flex items-center gap-3">
-            <Loader className="w-6 h-6 animate-spin text-primary-600" />
-            <span className="text-lg text-gray-600">Loading job details...</span>
-          </div>
-        </div>
-        <Footer />
-      </>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
     );
   }
 
-  if (!job) {
+  if (error) {
     return (
-      <>
-        {user ? <AuthenticatedHeader /> : <Header />}
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold text-primary-500">Job Not Found</h1>
-            <p className="mt-4 text-primary-500/70">The job you're looking for doesn't exist or has been removed.</p>
-            <Link to="/jobs" className="mt-6 inline-block bg-primary-400 text-white px-6 py-3 rounded-lg font-semibold">
-              Back to Jobs
+      <div className="min-h-screen bg-gray-50">
+        <AuthenticatedHeader />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
+            <div className="text-red-400 text-4xl mb-4">⚠️</div>
+            <h2 className="text-2xl font-impact font-bold uppercase text-primary-500 tracking-tight mb-4">
+              {error}
+            </h2>
+            <p className="text-gray-500 mb-6">The job you are looking for does not exist.</p>
+            <Link 
+              to="/employer-dashboard" 
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              ← Back to Dashboard
             </Link>
           </div>
         </div>
-        <Footer />
-      </>
+      </div>
     );
   }
 
-  const getPostedTimeAgo = (dateString) => {
-    const postedDate = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now - postedDate);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 1) return '1 day ago';
-    if (diffDays <= 7) return `${diffDays} days ago`;
-    if (diffDays <= 30) return `${Math.ceil(diffDays / 7)} weeks ago`;
-    return `${Math.ceil(diffDays / 30)} months ago`;
-  };
-
   return (
-    <>
-      {user ? <AuthenticatedHeader /> : <Header />}
-      <main className="pt-32 lg:pt-48 pb-24 bg-white">
-        <div className="px-4 sm:px-8 lg:px-24">
-          <div className="max-w-screen-lg mx-auto">
-            <div className="mb-12">
-              <p className="text-medium font-times italic text-primary-500/60 mb-4">({job.title})</p>
-              <h1 className="text-heading font-impact font-black uppercase text-primary-500 leading-none tracking-tight">{job.companyName}</h1>
-              <p className="text-subheading font-inter font-semibold text-primary-500/80 mt-2">{job.companyName}</p>
+    <div className="min-h-screen bg-gray-50">
+      <AuthenticatedHeader />
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-impact font-bold uppercase text-primary-500 tracking-tight">
+                {job.title}
+              </h1>
+              <p className="text-gray-600 mt-1">{job.department || 'General'}</p>
+              <p className="text-sm text-blue-600 mt-1">
+                {job.location || 'Remote'} • {job.employmentType || 'Full-time'}
+              </p>
             </div>
-
-            <div className="flex flex-wrap gap-x-8 gap-y-4 text-primary-500/80 mb-12">
-              <div className="flex items-center gap-2">
-                <Briefcase className="w-5 h-5" />
-                <span className="font-semibold">{job.type || 'Full-time'}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <MapPin className="w-5 h-5" />
-                <span className="font-semibold">{job.location || 'Remote'}</span>
-              </div>
-              {job.salary && (
-                <div className="flex items-center gap-2">
-                  <DollarSign className="w-5 h-5" />
-                  <span className="font-semibold">{job.salary}</span>
-                </div>
-              )}
-              <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                <span className="font-semibold">Posted {getPostedTimeAgo(job.postedDate)}</span>
-              </div>
-            </div>
-
-            <div className="prose prose-lg max-w-none font-inter text-primary-500/90 leading-relaxed">
-              <h2 className="font-impact text-display-sm uppercase text-primary-500">Job Description</h2>
-              <div className="whitespace-pre-line">{job.description}</div>
-
-              {job.responsibilities && (
-                <>
-                  <h2 className="font-impact text-display-sm uppercase text-primary-500 mt-12">Responsibilities</h2>
-                  <div className="whitespace-pre-line">{job.responsibilities}</div>
-                </>
-              )}
-
-              {job.qualifications && (
-                <>
-                  <h2 className="font-impact text-display-sm uppercase text-primary-500 mt-12">Qualifications</h2>
-                  <div className="whitespace-pre-line">{job.qualifications}</div>
-                </>
-              )}
-            </div>
-
-            <div className="mt-16 text-center">
-              {user && user.role === 'candidate' ? (
-                hasApplied ? (
-                  <div className="inline-flex items-center gap-2 px-12 py-4 bg-green-100 text-green-700 rounded-lg text-lg font-semibold">
-                    <CheckCircle className="w-5 h-5" />
-                    Applied Successfully
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleApply}
-                    disabled={applying}
-                    className="inline-block bg-primary-400 text-white px-12 py-4 rounded-lg text-lg font-inter font-semibold hover:bg-primary-400/90 transition-colors disabled:opacity-50"
-                  >
-                    {applying ? 'Applying...' : 'Apply Now'}
-                  </button>
-                )
-              ) : user && user.role === 'hr' ? (
-                <p className="text-primary-500/70">HR users cannot apply to jobs</p>
-              ) : (
-                <Link
-                  to="/signup"
-                  className="inline-block bg-primary-400 text-white px-12 py-4 rounded-lg text-lg font-inter font-semibold hover:bg-primary-400/90 transition-colors"
-                >
-                  Sign Up to Apply
-                </Link>
-              )}
+            <div className="flex items-center space-x-4">
+              <Link
+                to="/employer-dashboard"
+                className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                ← Back to Dashboard
+              </Link>
+              <span className={`px-3 py-1 text-sm font-medium rounded-full ${
+                job.status === 'active' ? 'bg-green-100 text-green-800' :
+                job.status === 'closed' ? 'bg-red-100 text-red-800' :
+                job.status === 'draft' ? 'bg-gray-100 text-gray-800' :
+                'bg-blue-100 text-blue-800'
+              }`}>
+                {job.status?.charAt(0).toUpperCase() + job.status?.slice(1)}
+              </span>
             </div>
           </div>
         </div>
-      </main>
-      <Footer />
-    </>
+
+        {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Profile Information */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h2 className="text-xl font-impact font-bold uppercase text-primary-500 tracking-tight mb-4">
+                Job Description
+              </h2>
+              <div className="prose max-w-none">
+                <p className="text-gray-600 whitespace-pre-wrap">
+                  {job.description || 'No description provided for this job.'}
+                </p>
+              </div>
+            </div>
+
+            {job.tags && job.tags.length > 0 && (
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <h2 className="text-xl font-impact font-bold uppercase text-primary-500 tracking-tight mb-4">
+                  Required Skills
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {job.tags.map((tag, index) => (
+                    <span 
+                      key={index}
+                      className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Job Info */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-impact font-bold uppercase text-primary-500 tracking-tight mb-4">
+                Job Information
+              </h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Status:</span>
+                  <span className="font-medium">{job.status}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Type:</span>
+                  <span className="font-medium">{job.employmentType || 'Full-time'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Location:</span>
+                  <span className="font-medium">{job.location || 'Remote'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Department:</span>
+                  <span className="font-medium">{job.department || 'General'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Created:</span>
+                  <span className="font-medium">
+                    {job.createdAt ? new Date(job.createdAt).toLocaleDateString() : 'Unknown'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-impact font-bold uppercase text-primary-500 tracking-tight mb-4">
+                Actions
+              </h3>
+              <div className="space-y-3">
+                <Link
+                  to={`/jobs/${jobId}/flow`}
+                  className="w-full px-4 py-2 text-center bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 transition-colors block"
+                >
+                  View Job Flow
+                </Link>
+                <Link
+                  to={`/assessments/${jobId}`}
+                  className="w-full px-4 py-2 text-center bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors block"
+                >
+                  Edit Assessment
+                </Link>
+              </div>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-impact font-bold uppercase text-primary-500 tracking-tight mb-4">
+                Quick Info
+              </h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Status:</span>
+                  <span className="font-medium">{candidate.stage}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Applied:</span>
+                  <span className="font-medium">
+                    {candidate.appliedDate ? new Date(candidate.appliedDate).toLocaleDateString() : 'Unknown'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Last Updated:</span>
+                  <span className="font-medium">
+                    {candidate.updatedAt ? new Date(candidate.updatedAt).toLocaleDateString() : 'Unknown'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
