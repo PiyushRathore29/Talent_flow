@@ -155,6 +155,45 @@ export const candidateHandlers = [
     }
   }),
 
+  // PUT /candidates/:id
+  http.put('/api/candidates/:id', async ({ params, request }) => {
+    try {
+      const candidateId = parseInt(params.id);
+      const updates = await request.json();
+      
+      const existingCandidate = await db.candidates.get(candidateId);
+      if (!existingCandidate) {
+        return new HttpResponse('Candidate not found', { status: 404 });
+      }
+
+      // If stage is being updated, create history entry
+      if (updates.stage && updates.stage !== existingCandidate.stage) {
+        await db.candidateHistory.add({
+          candidateId,
+          fromStageId: existingCandidate.currentStageId || null,
+          toStageId: getStageId(updates.stage),
+          changedBy: 1, // Default user
+          changedAt: new Date(),
+          note: `Stage changed from ${existingCandidate.stage} to ${updates.stage}`
+        });
+      }
+
+      const updatedData = {
+        ...updates,
+        updatedAt: new Date()
+      };
+
+      await db.candidates.update(candidateId, updatedData);
+      const updatedCandidate = await db.candidates.get(candidateId);
+      
+      console.log('🔄 [MSW] Candidate updated in IndexedDB (PUT):', candidateId);
+      return HttpResponse.json(updatedCandidate);
+    } catch (error) {
+      console.error('❌ [MSW] Error updating candidate (PUT):', error);
+      return new HttpResponse('Failed to update candidate', { status: 500 });
+    }
+  }),
+
   // PATCH /candidates/:id
   http.patch('/api/candidates/:id', async ({ params, request }) => {
     try {

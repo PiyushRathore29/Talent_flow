@@ -12,6 +12,8 @@ import SignInPage from './pages/SignInPage';
 
 // Dashboard and main pages
 import DashboardPage from './pages/DashboardPage';
+import AnalyticsDashboard from './components/AnalyticsDashboard';
+import FlowDashboard from './components/FlowDashboard';
 import JobsPage from './pages/JobsPage';
 import JobDetailPage from './pages/JobDetailPage';
 import JobFlowPage from './pages/JobFlowPage';
@@ -85,7 +87,12 @@ function AppRoutes() {
             {/* Main application routes - matching API patterns */}
             <Route path="/dashboard" element={
               <ProtectedRoute>
-                <DashboardPage />
+                <AnalyticsDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/flow/:jobId" element={
+              <ProtectedRoute>
+                <FlowDashboard />
               </ProtectedRoute>
             } />
             

@@ -130,7 +130,7 @@ const AssessmentBuilderPage = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-hero font-impact font-black uppercase text-primary-500 leading-none tracking-tight mb-4">Error</h1>
+          <h1 className="text-3xl font-impact font-black uppercase text-primary-500 leading-tight tracking-tight mb-4">Error</h1>
           <p className="text-gray-600 mb-4">{error}</p>
           <Link
             to="/assessments"
@@ -150,7 +150,7 @@ const AssessmentBuilderPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-hero font-impact font-black uppercase text-primary-500 leading-none tracking-tight">Assessment Builder</h1>
+              <h1 className="text-3xl font-impact font-black uppercase text-primary-500 leading-tight tracking-tight">Assessment Builder</h1>
               <p className="mt-1 text-sm text-gray-500">
                 {job?.title} • PUT /assessments/{jobId}
               </p>
@@ -186,11 +186,11 @@ const AssessmentBuilderPage = () => {
           <div className="lg:col-span-2 space-y-6">
             {/* Assessment Settings */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h2 className="text-hero font-impact font-black uppercase text-primary-500 leading-none tracking-tight mb-4">Assessment Settings</h2>
+              <h2 className="text-xl font-impact font-black uppercase text-primary-500 leading-tight tracking-tight mb-4">Assessment Settings</h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-hero font-impact font-black uppercase text-primary-500 leading-none tracking-tight mb-2">
+                  <label className="block text-sm font-impact font-bold uppercase text-primary-500 leading-tight tracking-tight mb-2">
                     Title
                   </label>
                   <input
@@ -202,7 +202,7 @@ const AssessmentBuilderPage = () => {
                 </div>
                 
                 <div>
-                  <label className="block text-hero font-impact font-black uppercase text-primary-500 leading-none tracking-tight mb-2">
+                  <label className="block text-sm font-impact font-bold uppercase text-primary-500 leading-tight tracking-tight mb-2">
                     Time Limit (minutes)
                   </label>
                   <input
@@ -214,7 +214,7 @@ const AssessmentBuilderPage = () => {
                 </div>
                 
                 <div className="md:col-span-2">
-                  <label className="block text-hero font-impact font-black uppercase text-primary-500 leading-none tracking-tight mb-2">
+                  <label className="block text-sm font-impact font-bold uppercase text-primary-500 leading-tight tracking-tight mb-2">
                     Description
                   </label>
                   <textarea
@@ -226,7 +226,7 @@ const AssessmentBuilderPage = () => {
                 </div>
                 
                 <div>
-                  <label className="block text-hero font-impact font-black uppercase text-primary-500 leading-none tracking-tight mb-2">
+                  <label className="block text-sm font-impact font-bold uppercase text-primary-500 leading-tight tracking-tight mb-2">
                     Passing Score (%)
                   </label>
                   <input
@@ -244,7 +244,7 @@ const AssessmentBuilderPage = () => {
             {/* Questions */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-hero font-impact font-black uppercase text-primary-500 leading-none tracking-tight">
+                <h2 className="text-lg font-impact font-black uppercase text-primary-500 leading-tight tracking-tight">
                   Questions ({assessment?.questions?.length || 0})
                 </h2>
                 <div className="flex space-x-2">
@@ -277,7 +277,7 @@ const AssessmentBuilderPage = () => {
                 {(!assessment?.questions || assessment.questions.length === 0) && (
                   <div className="text-center py-12 text-gray-500">
                     <div className="text-4xl mb-4">❓</div>
-                    <h3 className="text-hero font-impact font-black uppercase text-primary-500 leading-none tracking-tight mb-2">No questions yet</h3>
+                    <h3 className="text-sm font-impact font-bold uppercase text-primary-500 leading-tight tracking-tight mb-2">No questions yet</h3>
                     <p className="text-gray-500 mb-4">Add questions to start building your assessment.</p>
                     <div className="space-x-2">
                       <button
@@ -303,7 +303,7 @@ const AssessmentBuilderPage = () => {
           <div className="space-y-6">
             {/* Quick Stats */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h3 className="text-hero font-impact font-black uppercase text-primary-500 leading-none tracking-tight mb-4">Assessment Stats</h3>
+              <h3 className="text-xl font-impact font-black uppercase text-primary-500 leading-tight tracking-tight mb-4">Assessment Stats</h3>
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Questions:</span>
@@ -328,7 +328,7 @@ const AssessmentBuilderPage = () => {
 
             {/* Question Types Help */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h3 className="text-hero font-impact font-black uppercase text-primary-500 leading-none tracking-tight mb-4">Question Types</h3>
+              <h3 className="text-xl font-impact font-black uppercase text-primary-500 leading-tight tracking-tight mb-4">Question Types</h3>
               <div className="space-y-3">
                 <div className="border border-blue-200 rounded-lg p-3">
                   <h4 className="font-medium text-blue-900">Multiple Choice</h4>
@@ -347,7 +347,7 @@ const AssessmentBuilderPage = () => {
 
             {/* Actions */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h3 className="text-hero font-impact font-black uppercase text-primary-500 leading-none tracking-tight mb-4">Actions</h3>
+              <h3 className="text-xl font-impact font-black uppercase text-primary-500 leading-tight tracking-tight mb-4">Actions</h3>
               <div className="space-y-3">
                 <Link
                   to={`/assessments/${jobId}/take`}
@@ -397,7 +397,7 @@ const QuestionEditor = ({ question, index, onUpdate, onDelete }) => {
   return (
     <div className="border border-gray-200 rounded-lg p-6">
       <div className="flex justify-between items-start mb-4">
-        <h3 className="text-hero font-impact font-black uppercase text-primary-500 leading-none tracking-tight">
+        <h3 className="text-lg font-impact font-black uppercase text-primary-500 leading-tight tracking-tight">
           Question {index + 1}
         </h3>
         <div className="flex items-center space-x-2">
@@ -417,7 +417,7 @@ const QuestionEditor = ({ question, index, onUpdate, onDelete }) => {
 
       <div className="space-y-4">
         <div>
-          <label className="block text-hero font-impact font-black uppercase text-primary-500 leading-none tracking-tight mb-2">
+          <label className="block text-sm font-impact font-bold uppercase text-primary-500 leading-tight tracking-tight mb-2">
             Question Title
           </label>
           <input
@@ -430,7 +430,7 @@ const QuestionEditor = ({ question, index, onUpdate, onDelete }) => {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-hero font-impact font-black uppercase text-primary-500 leading-none tracking-tight mb-2">
+            <label className="block text-sm font-impact font-bold uppercase text-primary-500 leading-tight tracking-tight mb-2">
               Points
             </label>
             <input
@@ -444,7 +444,7 @@ const QuestionEditor = ({ question, index, onUpdate, onDelete }) => {
           
           {question.type === 'text' && (
             <div>
-              <label className="block text-hero font-impact font-black uppercase text-primary-500 leading-none tracking-tight mb-2">
+              <label className="block text-sm font-impact font-bold uppercase text-primary-500 leading-tight tracking-tight mb-2">
                 Max Length
               </label>
               <input
@@ -461,7 +461,7 @@ const QuestionEditor = ({ question, index, onUpdate, onDelete }) => {
         {question.type === 'multiple_choice' && (
           <div>
             <div className="flex justify-between items-center mb-3">
-              <label className="block text-hero font-impact font-black uppercase text-primary-500 leading-none tracking-tight">
+              <label className="block text-lg font-impact font-black uppercase text-primary-500 leading-tight tracking-tight">
                 Answer Options
               </label>
               <button

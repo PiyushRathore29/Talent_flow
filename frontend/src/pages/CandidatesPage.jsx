@@ -1,422 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, LineChart, Line
+} from 'recharts';
+import { Users, TrendingUp, Target, Calendar, ChevronDown } from 'lucide-react';
+import {
+  DndContext,
+  DragOverlay,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  useDroppable,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import AuthenticatedHeader from '../components/AuthenticatedHeader';
 import Footer from '../components/Footer';
 import CandidatesBoard from '../components/CandidatesBoard';
-
-const CandidatesPage = () => {
-  const [candidates, setCandidates] = useState([]);
-  const [jobs, setJobs] = useState([]); // Add jobs state
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  
-  // Filters
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(20);
-  const [search, setSearch] = useState('');
-  const [stageFilter, setStageFilter] = useState('');
-  
-  // View mode
-  const [viewMode, setViewMode] = useState('kanban'); // 'list' or 'kanban'
-  
-  // Kanban stages
-  const stages = [
-    { id: 'applied', name: 'Applied', color: 'bg-blue-500' },
-    { id: 'screen', name: 'Screening', color: 'bg-yellow-500' },
-    { id: 'tech', name: 'Technical', color: 'bg-purple-500' },
-    { id: 'offer', name: 'Offer', color: 'bg-orange-500' },
-    { id: 'hired', name: 'Hired', color: 'bg-green-500' },
-    { id: 'rejected', name: 'Rejected', color: 'bg-red-500' }
-  ];
-
-  // Fetch candidates using MSW API
-  const fetchCandidates = async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        pageSize: pageSize.toString(),
-        ...(search && { search }),
-        ...(stageFilter && { stage: stageFilter })
-      });
-
-      const response = await fetch(`/api/candidates?${params}`);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      setCandidates(data.data || []);
-      setError(null);
-    } catch (err) {
-      setError(err.message);
-      console.error('Failed to fetch candidates:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch jobs for displaying job titles
-  const fetchJobs = async () => {
-    try {
-      const response = await fetch('/api/jobs?pageSize=100');
-      if (!response.ok) throw new Error('Failed to fetch jobs');
-      const data = await response.json();
-      setJobs(data.data || []);
-    } catch (err) {
-      console.error('Failed to fetch jobs:', err);
-    }
-  };
-
-  useEffect(() => {
-    fetchJobs(); // Fetch jobs on component mount
-  }, []);
-
-  useEffect(() => {
-    fetchCandidates();
-  }, [currentPage, search, stageFilter]);
-
-  // Move candidate to different stage
-  const handleStageChange = async (candidateId, newStage) => {
-    try {
-      const response = await fetch(`/api/candidates/${candidateId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stage: newStage })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to update candidate: ${response.statusText}`);
-      }
-
-      // Refresh candidates list
-      await fetchCandidates();
-    } catch (err) {
-      console.error('Error updating candidate stage:', err);
-      alert('Failed to update candidate stage: ' + err.message);
-    }
-  };
-
-  // Create new candidate
-  const handleCreateCandidate = async (candidateData) => {
-    try {
-      const response = await fetch('/api/candidates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(candidateData)
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to create candidate: ${response.statusText}`);
-      }
-
-      await fetchCandidates();
-    } catch (err) {
-      console.error('Error creating candidate:', err);
-      alert('Failed to create candidate: ' + err.message);
-    }
-  };
-
-  // Group candidates by stage for kanban view
-  const candidatesByStage = stages.reduce((acc, stage) => {
-    acc[stage.id] = candidates.filter(candidate => candidate.stage === stage.id);
-    return acc;
-  }, {});
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-4xl font-impact font-black uppercase text-primary-500 leading-none tracking-tight">Candidates</h1>
-              <p className="mt-1 text-sm text-gray-500">
-                Manage candidate pipeline • GET /candidates?search=&stage=&page=
-              </p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link
-                to="/dashboard"
-                className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-              >
-                ← Dashboard
-              </Link>
-              <div className="flex rounded-md border border-gray-300">
-                <button
-                  onClick={() => setViewMode('kanban')}
-                  className={`px-3 py-2 text-sm font-medium transition-colors ${
-                    viewMode === 'kanban' 
-                      ? 'bg-blue-600 text-white' 
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  Kanban
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`px-3 py-2 text-sm font-medium transition-colors border-l border-gray-300 ${
-                    viewMode === 'list' 
-                      ? 'bg-blue-600 text-white' 
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  List
-                </button>
-              </div>
-              <CreateCandidateButton onCreate={handleCreateCandidate} jobs={jobs} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-impact font-bold uppercase text-primary-500 tracking-tight mb-2">Search</label>
-              <input
-                type="text"
-                placeholder="Search candidates..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-impact font-bold uppercase text-primary-500 tracking-tight mb-2">Stage</label>
-              <select
-                value={stageFilter}
-                onChange={(e) => setStageFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Stages</option>
-                {stages.map(stage => (
-                  <option key={stage.id} value={stage.id}>{stage.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-end">
-              <button
-                onClick={() => {
-                  setSearch('');
-                  setStageFilter('');
-                  setCurrentPage(1);
-                }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-              >
-                Clear Filters
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Error Display */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
-            <div className="flex">
-              <div className="text-red-400">⚠️</div>
-              <div className="ml-3">
-                <h3 className="text-hero font-impact font-black uppercase text-primary-500 leading-none tracking-tight">Error loading candidates</h3>
-                <div className="mt-2 text-sm text-red-700">{error}</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Content */}
-        {viewMode === 'kanban' ? (
-          <KanbanView 
-            stages={stages} 
-            candidatesByStage={candidatesByStage} 
-            jobs={jobs}
-            onStageChange={handleStageChange}
-          />
-        ) : (
-          <ListView 
-            candidates={candidates} 
-            stages={stages}
-            jobs={jobs}
-            onStageChange={handleStageChange}
-          />
-        )}
-      </div>
-    </div>
-  );
-};
-
-// Kanban Board View Component
-const KanbanView = ({ stages, candidatesByStage, jobs, onStageChange }) => {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
-      {stages.map(stage => (
-        <div key={stage.id} className="bg-gray-100 rounded-lg p-4">
-          <div className="flex items-center mb-4">
-            <div className={`w-3 h-3 rounded-full ${stage.color} mr-2`}></div>
-            <h3 className="text-lg font-impact font-bold uppercase text-primary-500 tracking-tight">{stage.name}</h3>
-            <span className="ml-auto bg-white px-2 py-1 rounded text-sm text-gray-600">
-              {candidatesByStage[stage.id]?.length || 0}
-            </span>
-          </div>
-          
-          <div className="space-y-3">
-            {(candidatesByStage[stage.id] || []).map(candidate => (
-              <CandidateCard 
-                key={candidate.id} 
-                candidate={candidate} 
-                stages={stages}
-                jobs={jobs}
-                onStageChange={onStageChange}
-              />
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-// List View Component
-const ListView = ({ candidates, stages, jobs, onStageChange }) => {
-  return (
-    <div className="bg-white rounded-lg shadow-sm border">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <h2 className="text-2xl font-impact font-bold uppercase text-primary-500 tracking-tight">
-          Candidates ({candidates.length} total)
-        </h2>
-      </div>
-      
-      <div className="divide-y divide-gray-200">
-        {candidates.length > 0 ? candidates.map(candidate => {
-          const candidateJob = jobs.find(job => job.id === candidate.jobId);
-          return (
-            <div key={candidate.id} className="p-6 hover:bg-gray-50 transition-colors">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="flex-shrink-0">
-                    <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
-                      {candidate.name?.[0]?.toUpperCase() || '?'}
-                    </div>
-                  </div>
-                  <div>
-                    <Link
-                      to={`/candidates/${candidate.id}`}
-                      className="text-lg font-medium text-gray-900 hover:text-blue-600 transition-colors"
-                    >
-                      {candidate.name}
-                    </Link>
-                    <div className="text-sm text-gray-500">{candidate.email}</div>
-                    <div className="text-xs text-blue-600 font-medium">
-                      Applied to: {candidateJob?.title || 'Unknown Job'}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-4">
-                  <select
-                    value={candidate.stage}
-                    onChange={(e) => onStageChange(candidate.id, e.target.value)}
-                    className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {stages.map(stage => (
-                      <option key={stage.id} value={stage.id}>{stage.name}</option>
-                    ))}
-                  </select>
-                  
-                  <Link
-                    to={`/candidates/${candidate.id}/timeline`}
-                    className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
-                  >
-                    Timeline
-                  </Link>
-                  
-                  {candidateJob && (
-                    <Link
-                      to={`/jobs/${candidateJob.id}/flow`}
-                      className="text-sm text-purple-600 hover:text-purple-700 transition-colors"
-                    >
-                      Job Flow
-                    </Link>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        }) : (
-          <div className="p-12 text-center">
-            <div className="text-gray-400 text-4xl mb-4">👥</div>
-                                <h3 className="text-xl font-impact font-bold uppercase text-primary-500 tracking-tight mb-2">No candidates found</h3>
-            <p className="text-gray-500">Candidates will appear here as they apply to jobs.</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// Candidate Card Component
-const CandidateCard = ({ candidate, stages, jobs, onStageChange }) => {
-  const candidateJob = jobs.find(job => job.id === candidate.jobId);
-  
-  return (
-    <div className="bg-white rounded-lg p-3 shadow-sm border">
-      <div className="flex items-center justify-between mb-2">
-        <Link
-          to={`/candidates/${candidate.id}`}
-          className="font-medium text-gray-900 hover:text-blue-600 transition-colors text-sm"
-        >
-          {candidate.name}
-        </Link>
-      </div>
-      
-      <div className="text-xs text-gray-500 mb-2">{candidate.email}</div>
-      
-      {candidateJob && (
-        <div className="text-xs text-blue-600 font-medium mb-3">
-          {candidateJob.title}
-        </div>
-      )}
-      
-      <div className="flex justify-between items-center">
-        <select
-          value={candidate.stage}
-          onChange={(e) => onStageChange(candidate.id, e.target.value)}
-          className="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-        >
-          {stages.map(stage => (
-            <option key={stage.id} value={stage.id}>{stage.name}</option>
-          ))}
-        </select>
-        
-        <div className="flex space-x-1">
-          <Link
-            to={`/candidates/${candidate.id}/timeline`}
-            className="text-xs text-blue-600 hover:text-blue-700 transition-colors"
-          >
-            Timeline
-          </Link>
-          {candidateJob && (
-            <Link
-              to={`/jobs/${candidateJob.id}/flow`}
-              className="text-xs text-purple-600 hover:text-purple-700 transition-colors"
-            >
-              Flow
-            </Link>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
 
 // Create Candidate Button Component
 const CreateCandidateButton = ({ onCreate, jobs }) => {
@@ -511,7 +122,7 @@ const CreateCandidateButton = ({ onCreate, jobs }) => {
               
               <div>
                 <label className="block text-sm font-impact font-bold uppercase text-primary-500 tracking-tight mb-2">
-                  Initial Stage
+                  Stage
                 </label>
                 <select
                   value={formData.stage}
@@ -547,6 +158,753 @@ const CreateCandidateButton = ({ onCreate, jobs }) => {
         </div>
       )}
     </>
+  );
+};
+
+const CandidatesPage = () => {
+  // State variables
+  const [candidates, setCandidates] = useState([]);
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // Filters
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(20);
+  const [search, setSearch] = useState('');
+  const [stageFilter, setStageFilter] = useState('');
+  
+  // View mode
+  const [viewMode, setViewMode] = useState('kanban'); // 'list' or 'kanban'
+  
+  // Drag and drop state
+  const [activeId, setActiveId] = useState(null);
+  const [draggedCandidate, setDraggedCandidate] = useState(null);
+  
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+  
+  // Drag and drop handlers
+  const handleDragStart = (event) => {
+    const { active } = event;
+    const candidate = candidates.find(c => c.id === active.id);
+    setActiveId(active.id);
+    setDraggedCandidate(candidate);
+  };
+
+  const handleDragEnd = async (event) => {
+    const { active, over } = event;
+    
+    // If no drop target or dropped on itself, do nothing
+    if (!over || active.id === over.id) {
+      setActiveId(null);
+      setDraggedCandidate(null);
+      return;
+    }
+
+    const candidateId = active.id;
+    const newStage = over.id;
+    
+    // Validate that the drop target is a valid stage
+    const validStages = stages.map(stage => stage.id);
+    if (!validStages.includes(newStage)) {
+      console.log('Invalid drop target, candidate will stay in original stage');
+      setActiveId(null);
+      setDraggedCandidate(null);
+      return;
+    }
+    
+    try {
+      // Update candidate stage via API
+      const response = await fetch(`/api/candidates/${candidateId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage: newStage })
+      });
+      
+      if (response.ok) {
+        // Update local state
+        setCandidates(prev => 
+          prev.map(candidate => 
+            candidate.id === candidateId 
+              ? { ...candidate, stage: newStage }
+              : candidate
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error updating candidate stage:', error);
+    }
+    
+    setActiveId(null);
+    setDraggedCandidate(null);
+  };
+
+  const handleDragCancel = () => {
+    setActiveId(null);
+    setDraggedCandidate(null);
+  };
+
+  // Utility functions
+  const handleStageChange = async (candidateId, newStage) => {
+    try {
+      const response = await fetch(`/api/candidates/${candidateId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage: newStage })
+      });
+      
+      if (response.ok) {
+        setCandidates(prev => 
+          prev.map(candidate => 
+            candidate.id === candidateId 
+              ? { ...candidate, stage: newStage }
+              : candidate
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error updating candidate stage:', error);
+    }
+  };
+
+  const handleCreateCandidate = async (candidateData) => {
+    try {
+      const response = await fetch('/api/candidates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(candidateData)
+      });
+      
+      if (response.ok) {
+        const newCandidate = await response.json();
+        setCandidates(prev => [...prev, newCandidate]);
+      }
+    } catch (error) {
+      console.error('Error creating candidate:', error);
+    }
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch candidates
+        const candidatesResponse = await fetch('/api/candidates');
+        const candidatesData = await candidatesResponse.json();
+        setCandidates(candidatesData.data || candidatesData);
+        
+        // Fetch jobs
+        const jobsResponse = await fetch('/api/jobs');
+        const jobsData = await jobsResponse.json();
+        setJobs(jobsData.data || jobsData);
+        
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Kanban stages
+  const stages = [
+    { id: 'applied', name: 'Applied', color: 'bg-blue-500' },
+    { id: 'screen', name: 'Screening', color: 'bg-yellow-500' },
+    { id: 'tech', name: 'Technical', color: 'bg-purple-500' },
+    { id: 'offer', name: 'Offer', color: 'bg-orange-500' },
+    { id: 'hired', name: 'Hired', color: 'bg-green-500' },
+    { id: 'rejected', name: 'Rejected', color: 'bg-red-500' }
+  ];
+
+  // Analytics state
+  const [showAnalytics, setShowAnalytics] = useState(true);
+  const [allCandidates, setAllCandidates] = useState([]);
+
+  // Calculate analytics data
+  const getAnalyticsData = () => {
+    // Pipeline data
+    const pipelineData = stages.map(stage => ({
+      stage: stage.name,
+      count: allCandidates.filter(c => c.stage === stage.id).length,
+      color: stage.color.replace('bg-', '#')
+    }));
+
+    // Application trends (mock data - in real app would be based on application dates)
+    const trendsData = [
+      { month: 'Jan', applications: 45 },
+      { month: 'Feb', applications: 52 },
+      { month: 'Mar', applications: 61 },
+      { month: 'Apr', applications: 58 },
+      { month: 'May', applications: 67 },
+      { month: 'Jun', applications: 74 }
+    ];
+
+    // Conversion rates
+    const totalApplied = allCandidates.filter(c => c.stage === 'applied').length;
+    const totalHired = allCandidates.filter(c => c.stage === 'hired').length;
+    const conversionRate = totalApplied > 0 ? ((totalHired / totalApplied) * 100).toFixed(1) : 0;
+
+    return { pipelineData, trendsData, conversionRate };
+  };
+
+  const { pipelineData, trendsData, conversionRate } = getAnalyticsData();
+
+  // Fetch candidates using MSW API
+  const fetchCandidates = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch all candidates for analytics
+      const allCandidatesResponse = await fetch('/api/candidates?pageSize=1000');
+      if (allCandidatesResponse.ok) {
+        const allData = await allCandidatesResponse.json();
+        setAllCandidates(allData.data || []);
+      }
+      
+      // Fetch paginated candidates for display
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        pageSize: pageSize.toString(),
+        ...(search && { search }),
+        ...(stageFilter && { stage: stageFilter })
+      });
+
+      const response = await fetch(`/api/candidates?${params}`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      setCandidates(data.data || []);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+      console.error('Failed to fetch candidates:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch jobs for displaying job titles
+  const fetchJobs = async () => {
+    try {
+      const response = await fetch('/api/jobs?pageSize=100');
+      if (!response.ok) throw new Error('Failed to fetch jobs');
+      const data = await response.json();
+      setJobs(data.data || []);
+    } catch (err) {
+      console.error('Failed to fetch jobs:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchJobs(); // Fetch jobs on component mount
+  }, []);
+
+  useEffect(() => {
+    fetchCandidates();
+  }, [currentPage, search, stageFilter]);
+
+  // Group candidates by stage for kanban view
+  const candidatesByStage = stages.reduce((acc, stage) => {
+    acc[stage.id] = candidates.filter(candidate => candidate.stage === stage.id);
+    return acc;
+  }, {});
+
+  // Debug logging
+  console.log('Candidates data:', candidates);
+  console.log('Candidates by stage:', candidatesByStage);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div>
+              <h1 className="text-4xl font-impact font-black uppercase text-primary-500 leading-none tracking-tight">Candidates</h1>
+              <p className="mt-1 text-sm text-gray-500">
+                Manage candidate pipeline • GET /candidates?search=&stage=&page=
+              </p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Link
+                to="/dashboard"
+                className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                ← Dashboard
+              </Link>
+              <div className="flex rounded-md border border-gray-300">
+                <button
+                  onClick={() => setViewMode('kanban')}
+                  className={`px-3 py-2 text-sm font-medium transition-colors ${
+                    viewMode === 'kanban' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Kanban
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 py-2 text-sm font-medium transition-colors border-l border-gray-300 ${
+                    viewMode === 'list' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  List
+                </button>
+              </div>
+              <CreateCandidateButton onCreate={handleCreateCandidate} jobs={jobs} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Analytics Section */}
+        {showAnalytics && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-900">Candidate Analytics</h2>
+              <button
+                onClick={() => setShowAnalytics(!showAnalytics)}
+                className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                <ChevronDown className={`w-4 h-4 mr-1 transition-transform ${showAnalytics ? 'rotate-180' : ''}`} />
+                {showAnalytics ? 'Hide' : 'Show'} Analytics
+              </button>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Candidates</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">{allCandidates.length}</p>
+                  </div>
+                  <div className="p-3 bg-blue-100 rounded-lg">
+                    <Users className="w-5 h-5 text-blue-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Active Pipeline</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                      {allCandidates.filter(c => !['hired', 'rejected'].includes(c.stage)).length}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-yellow-100 rounded-lg">
+                    <TrendingUp className="w-5 h-5 text-yellow-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Hired</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                      {allCandidates.filter(c => c.stage === 'hired').length}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-green-100 rounded-lg">
+                    <Target className="w-5 h-5 text-green-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Conversion Rate</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">{conversionRate}%</p>
+                  </div>
+                  <div className="p-3 bg-purple-100 rounded-lg">
+                    <Calendar className="w-5 h-5 text-purple-600" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* Pipeline Chart */}
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Candidate Pipeline</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={pipelineData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="stage" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#0d9488" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Application Trends */}
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Application Trends</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={trendsData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line 
+                      type="monotone" 
+                      dataKey="applications" 
+                      stroke="#0d9488" 
+                      strokeWidth={2}
+                      dot={{ fill: '#0d9488', strokeWidth: 2, r: 4 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Filters */}
+        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-impact font-bold uppercase text-primary-500 tracking-tight mb-2">Search</label>
+              <input
+                type="text"
+                placeholder="Search candidates..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-impact font-bold uppercase text-primary-500 tracking-tight mb-2">Stage</label>
+              <select
+                value={stageFilter}
+                onChange={(e) => setStageFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All Stages</option>
+                {stages.map(stage => (
+                  <option key={stage.id} value={stage.id}>{stage.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-end">
+              <button
+                onClick={() => {
+                  setSearch('');
+                  setStageFilter('');
+                  setCurrentPage(1);
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                Clear Filters
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+            <div className="flex">
+              <div className="text-red-400">⚠️</div>
+              <div className="ml-3">
+                <h3 className="text-hero font-impact font-black uppercase text-primary-500 leading-none tracking-tight">Error loading candidates</h3>
+                <div className="mt-2 text-sm text-red-700">{error}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Content */}
+        {viewMode === 'kanban' ? (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
+          >
+            <KanbanView 
+              stages={stages} 
+              candidatesByStage={candidatesByStage} 
+              jobs={jobs}
+              onStageChange={handleStageChange}
+            />
+            <DragOverlay>
+              {activeId && draggedCandidate ? (
+                <CandidateCard 
+                  candidate={draggedCandidate} 
+                  stages={stages}
+                  jobs={jobs}
+                  onStageChange={handleStageChange}
+                  isDragOverlay
+                />
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        ) : (
+          <ListView 
+            candidates={candidates} 
+            stages={stages}
+            jobs={jobs}
+            onStageChange={handleStageChange}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Kanban Board View Component
+const KanbanView = ({ stages, candidatesByStage, jobs, onStageChange }) => {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
+      {stages.map(stage => (
+        <DroppableColumn key={stage.id} stage={stage} candidatesByStage={candidatesByStage} jobs={jobs} onStageChange={onStageChange} stages={stages} />
+      ))}
+    </div>
+  );
+};
+
+// Droppable Column Component
+const DroppableColumn = ({ stage, candidatesByStage, jobs, onStageChange, stages }) => {
+  const {
+    setNodeRef,
+    isOver,
+  } = useDroppable({
+    id: stage.id,
+  });
+
+  return (
+    <div 
+      ref={setNodeRef}
+      className={`bg-gray-100 rounded-lg p-4 transition-colors ${
+        isOver ? 'bg-gray-200 ring-2 ring-primary-300' : ''
+      }`}
+    >
+      <div className="flex items-center mb-4">
+        <div className={`w-3 h-3 rounded-full ${stage.color} mr-2`}></div>
+        <h3 className="text-lg font-impact font-bold uppercase text-primary-500 tracking-tight">{stage.name}</h3>
+        <span className="ml-auto bg-white px-2 py-1 rounded text-sm text-gray-600">
+          {candidatesByStage[stage.id]?.length || 0}
+        </span>
+      </div>
+      
+      <div className="space-y-3">
+        {(candidatesByStage[stage.id] || []).map(candidate => (
+          <DraggableCandidateCard 
+            key={candidate.id} 
+            candidate={candidate} 
+            stages={stages}
+            jobs={jobs}
+            onStageChange={onStageChange}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// List View Component
+const ListView = ({ candidates, stages, jobs, onStageChange }) => {
+  return (
+    <div className="bg-white rounded-lg shadow-sm border">
+      <div className="px-6 py-4 border-b border-gray-200">
+        <h2 className="text-2xl font-impact font-bold uppercase text-primary-500 tracking-tight">
+          Candidates ({candidates.length} total)
+        </h2>
+      </div>
+      
+      <div className="divide-y divide-gray-200">
+        {candidates.length > 0 ? candidates.map(candidate => {
+          const candidateJob = jobs.find(job => job.id === candidate.jobId);
+          return (
+            <div key={candidate.id} className="p-6 hover:bg-gray-50 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="flex-shrink-0">
+                    <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
+                      {candidate.name?.[0]?.toUpperCase() || '?'}
+                    </div>
+                  </div>
+                  <div>
+                    <Link
+                      to={`/candidates/${candidate.id}`}
+                      className="text-lg font-medium text-gray-900 hover:text-blue-600 transition-colors"
+                    >
+                      {candidate.name}
+                    </Link>
+                    <div className="text-sm text-gray-500">{candidate.email}</div>
+                    <div className="text-xs text-blue-600 font-medium">
+                      Applied to: {candidateJob?.title || 'Unknown Job'}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-4">
+                  <select
+                    value={candidate.stage}
+                    onChange={(e) => onStageChange(candidate.id, e.target.value)}
+                    className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {stages.map(stage => (
+                      <option key={stage.id} value={stage.id}>{stage.name}</option>
+                    ))}
+                  </select>
+                  
+                  <Link
+                    to={`/candidates/${candidate.id}/timeline`}
+                    className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
+                  >
+                    Timeline
+                  </Link>
+                  
+                  {candidateJob && (
+                    <Link
+                      to={`/jobs/${candidateJob.id}/flow`}
+                      className="text-sm text-purple-600 hover:text-purple-700 transition-colors"
+                    >
+                      Job Flow
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        }) : (
+          <div className="p-12 text-center">
+            <div className="text-gray-400 text-4xl mb-4">👥</div>
+                                <h3 className="text-xl font-impact font-bold uppercase text-primary-500 tracking-tight mb-2">No candidates found</h3>
+            <p className="text-gray-500">Candidates will appear here as they apply to jobs.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Draggable Candidate Card Wrapper
+const DraggableCandidateCard = ({ candidate, stages, jobs, onStageChange }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: candidate.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="cursor-grab active:cursor-grabbing"
+    >
+      <CandidateCard 
+        candidate={candidate} 
+        stages={stages}
+        jobs={jobs}
+        onStageChange={onStageChange}
+        isDraggable
+      />
+    </div>
+  );
+};
+
+// Candidate Card Component
+const CandidateCard = ({ candidate, stages, jobs, onStageChange, isDraggable = false, isDragOverlay = false }) => {
+  const candidateJob = jobs.find(job => job.id === candidate.jobId);
+  
+  return (
+    <div className={`bg-white rounded-lg p-3 shadow-sm border transition-shadow ${
+      isDragOverlay ? 'shadow-lg rotate-3' : 'hover:shadow-md'
+    }`}>
+      <div className="flex items-center justify-between mb-2">
+        <Link
+          to={`/candidates/${candidate.id}`}
+          className="font-medium text-gray-900 hover:text-blue-600 transition-colors text-sm truncate pr-2 flex-1"
+          title={candidate.name}
+        >
+          {candidate.name}
+        </Link>
+      </div>
+      
+      <div className="text-xs text-gray-500 mb-2 truncate" title={candidate.email}>
+        {candidate.email}
+      </div>
+      
+      {candidateJob && (
+        <div className="text-xs text-blue-600 font-medium mb-3 truncate" title={candidateJob.title}>
+          {candidateJob.title}
+        </div>
+      )}
+      
+      <div className="flex justify-between items-center">
+        {!isDraggable && stages && (
+          <select
+            value={candidate.stage}
+            onChange={(e) => onStageChange(candidate.id, e.target.value)}
+            className="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            {stages.map(stage => (
+              <option key={stage.id} value={stage.id}>{stage.name}</option>
+            ))}
+          </select>
+        )}
+        
+        <div className="flex space-x-1 ml-auto">
+          <Link
+            to={`/candidates/${candidate.id}/timeline`}
+            className="text-xs text-blue-600 hover:text-blue-700 transition-colors whitespace-nowrap"
+          >
+            Timeline
+          </Link>
+          {candidateJob && (
+            <Link
+              to={`/jobs/${candidateJob.id}/flow`}
+              className="text-xs text-purple-600 hover:text-purple-700 transition-colors whitespace-nowrap"
+            >
+              Flow
+            </Link>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 

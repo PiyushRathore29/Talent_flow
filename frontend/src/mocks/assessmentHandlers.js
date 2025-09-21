@@ -45,6 +45,67 @@ const calculateScore = (assessment, responses) => {
 };
 
 export const assessmentHandlers = [
+  // GET /assessments - Get all assessments
+  http.get('/api/assessments', async ({ request }) => {
+    try {
+      const url = new URL(request.url);
+      const companyId = url.searchParams.get('companyId');
+      
+      let assessments = await db.assessments.toArray();
+      
+      // Filter by company if specified
+      if (companyId) {
+        assessments = assessments.filter(a => a.companyId === parseInt(companyId));
+      }
+      
+      // Add status based on responses
+      const assessmentsWithStatus = await Promise.all(
+        assessments.map(async (assessment) => {
+          const responses = await db.assessmentResponses
+            .where('assessmentId')
+            .equals(assessment.id)
+            .toArray();
+          
+          const completedCount = responses.filter(r => r.isCompleted).length;
+          const inProgressCount = responses.filter(r => !r.isCompleted).length;
+          const totalCount = responses.length;
+          
+          let status = 'not-started';
+          if (completedCount > 0) {
+            status = 'completed';
+          } else if (inProgressCount > 0) {
+            status = 'in-progress';
+          }
+          
+          return {
+            ...assessment,
+            status,
+            responseStats: {
+              completed: completedCount,
+              inProgress: inProgressCount,
+              total: totalCount
+            }
+          };
+        })
+      );
+      
+      return HttpResponse.json({
+        success: true,
+        data: assessmentsWithStatus
+      });
+    } catch (error) {
+      console.error('Error fetching assessments:', error);
+      return HttpResponse.json(
+        { 
+          success: false, 
+          error: 'Failed to fetch assessments',
+          details: error.message 
+        },
+        { status: 500 }
+      );
+    }
+  }),
+
   // GET /assessments/:jobId
   http.get('/api/assessments/:jobId', async ({ params }) => {
     try {
