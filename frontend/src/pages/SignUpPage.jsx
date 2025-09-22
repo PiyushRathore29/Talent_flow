@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Eye, EyeOff, User, Mail, Lock, Building, Globe, AlertCircle, Users, Briefcase } from 'lucide-react';
+import Logo from '../components/Logo';
 
 const SignUpPage = () => {
   const navigate = useNavigate();
   const { signUp } = useAuth();
-  const [step, setStep] = useState(1); // 1: Choose role, 2: Fill details
-  const [role, setRole] = useState('');
+  const [isCandidate, setIsCandidate] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -23,9 +23,30 @@ const SignUpPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleRoleSelect = (selectedRole) => {
-    setRole(selectedRole);
-    setStep(2);
+  const autofillForm = () => {
+    if (isCandidate) {
+      setFormData({
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john.doe@example.com',
+        username: 'johndoe',
+        password: 'password123',
+        confirmPassword: 'password123',
+        companyName: '',
+        companyDomain: ''
+      });
+    } else {
+      setFormData({
+        firstName: 'Sarah',
+        lastName: 'Wilson',
+        email: 'sarah.wilson@techcorp.com',
+        username: 'sarahwilson',
+        password: 'password123',
+        confirmPassword: 'password123',
+        companyName: 'TechCorp Solutions',
+        companyDomain: 'techcorp.com'
+      });
+    }
   };
 
   const handleChange = (e) => {
@@ -52,7 +73,7 @@ const SignUpPage = () => {
       return false;
     }
 
-    if (role === 'hr' && !formData.companyName) {
+    if (!isCandidate && !formData.companyName) {
       setError('Company name is required for HR users');
       return false;
     }
@@ -70,15 +91,15 @@ const SignUpPage = () => {
 
     const result = await signUp({
       ...formData,
-      role
+      role: isCandidate ? 'candidate' : 'hr'
     });
     
     if (result.success) {
       // Redirect based on role
-      if (role === 'hr') {
-        navigate('/dashboard/employer');
-      } else {
+      if (isCandidate) {
         navigate('/dashboard/candidate');
+      } else {
+        navigate('/dashboard/employer');
       }
     } else {
       setError(result.error);
@@ -87,225 +108,105 @@ const SignUpPage = () => {
     setLoading(false);
   };
 
-  if (step === 1) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-black flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-        <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Join TalentFlow</h2>
-            <p className="mt-2 text-gray-600 dark:text-gray-300">Choose your account type to get started</p>
-          </div>
-        </div>
-
-        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="bg-white dark:bg-gray-900 py-8 px-4 shadow-lg rounded-lg sm:px-10">
-            <div className="space-y-4">
-              <button
-                onClick={() => handleRoleSelect('hr')}
-                className="w-full p-6 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-colors text-left group"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-primary-100 rounded-lg group-hover:bg-primary-200">
-                    <Briefcase className="w-6 h-6 text-primary-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">I'm an HR Professional</h3>
-                    <p className="text-sm text-gray-600">Manage jobs, candidates, and assessments for your company</p>
-                  </div>
-                </div>
-              </button>
-
-              <button
-                onClick={() => handleRoleSelect('candidate')}
-                className="w-full p-6 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-colors text-left group"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-blue-100 rounded-lg group-hover:bg-blue-200">
-                    <User className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">I'm a Job Seeker</h3>
-                    <p className="text-sm text-gray-600">Browse jobs and apply to opportunities</p>
-                  </div>
-                </div>
-              </button>
-            </div>
-
-            <div className="mt-6 text-center">
-              <Link
-                to="/signin"
-                className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-              >
-                Already have an account? Sign in
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="text-center">
-          <button
-            onClick={() => setStep(1)}
-            className="text-primary-600 hover:text-primary-700 text-sm font-medium mb-4"
-          >
-            ← Back to role selection
-          </button>
-          <h2 className="text-3xl font-bold text-gray-900">
-            Create your {role === 'hr' ? 'HR' : 'candidate'} account
-          </h2>
-          <p className="mt-2 text-gray-600">Fill in your details to get started</p>
-        </div>
-      </div>
+    <div className="min-h-screen bg-white dark:bg-black flex transition-colors duration-200">
+      {/* Left Side - Form */}
+      <div className="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24">
+        <div className="mx-auto w-full max-w-sm lg:w-96">
+          
+          {/* Logo and Header */}
+          <div className="mb-8">
+            <Logo />
+            <h2 className="mt-6 text-3xl font-bold text-gray-900 dark:text-white">Get Started</h2>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+              Welcome to TalentFlow - Let's create your account
+            </p>
+          </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow-lg rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          {/* Role Toggle */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {isCandidate ? 'Signing up as Candidate' : 'Signing up as HR'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsCandidate(!isCandidate)}
+                className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium"
+              >
+                {isCandidate ? 'Sign up as HR?' : 'Sign up as Candidate?'}
+              </button>
+            </div>
+          </div>
+
+          <form className="space-y-4" onSubmit={handleSubmit}>
             {error && (
-              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 {error}
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* Name Fields */}
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   First name
                 </label>
-                <div className="mt-1">
-                  <input
-                    id="firstName"
-                    name="firstName"
-                    type="text"
-                    required
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="John"
-                  />
-                </div>
+                <input
+                  id="firstName"
+                  name="firstName"
+                  type="text"
+                  autoComplete="given-name"
+                  required
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200"
+                  placeholder="First name"
+                />
               </div>
-
               <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Last name
                 </label>
-                <div className="mt-1">
-                  <input
-                    id="lastName"
-                    name="lastName"
-                    type="text"
-                    required
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Doe"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
-              </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
                 <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="pl-10 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                  placeholder="john@example.com"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                Username
-              </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="username"
-                  name="username"
+                  id="lastName"
+                  name="lastName"
                   type="text"
+                  autoComplete="family-name"
                   required
-                  value={formData.username}
+                  value={formData.lastName}
                   onChange={handleChange}
-                  className="pl-10 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                  placeholder="johndoe"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200"
+                  placeholder="Last name"
                 />
               </div>
             </div>
 
-            {role === 'hr' && (
-              <>
-                <div>
-                  <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">
-                    Company name
-                  </label>
-                  <div className="mt-1 relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Building className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <input
-                      id="companyName"
-                      name="companyName"
-                      type="text"
-                      required
-                      value={formData.companyName}
-                      onChange={handleChange}
-                      className="pl-10 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="Acme Corp"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="companyDomain" className="block text-sm font-medium text-gray-700">
-                    Company domain (optional)
-                  </label>
-                  <div className="mt-1 relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Globe className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <input
-                      id="companyDomain"
-                      name="companyDomain"
-                      type="text"
-                      value={formData.companyDomain}
-                      onChange={handleChange}
-                      className="pl-10 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="acmecorp.com"
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-
+            {/* Email */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Email
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={formData.email}
+                onChange={handleChange}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200"
+                placeholder="hi@talentflow.com"
+              />
+            </div>
+
+            {/* Password */}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Password
               </label>
               <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
                 <input
                   id="password"
                   name="password"
@@ -314,7 +215,7 @@ const SignUpPage = () => {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className="pl-10 pr-10 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                  className="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200"
                   placeholder="Enter password"
                 />
                 <button
@@ -323,65 +224,113 @@ const SignUpPage = () => {
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400" />
+                    <EyeOff className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                   ) : (
-                    <Eye className="h-5 w-5 text-gray-400" />
+                    <Eye className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                   )}
                 </button>
               </div>
             </div>
 
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                Confirm password
-              </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
+            {!isCandidate && (
+              <div>
+                <label htmlFor="companyName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Company name
+                </label>
                 <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
+                  id="companyName"
+                  name="companyName"
+                  type="text"
+                  autoComplete="organization"
                   required
-                  value={formData.confirmPassword}
+                  value={formData.companyName}
                   onChange={handleChange}
-                  className="pl-10 pr-10 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                  placeholder="Confirm password"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200"
+                  placeholder="Your company name"
                 />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400" />
-                  )}
-                </button>
               </div>
-            </div>
+            )}
 
-            <div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Creating account...' : 'Create account'}
-              </button>
-            </div>
+            {/* Autofill Button */}
+            <button
+              type="button"
+              onClick={autofillForm}
+              className="w-full py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors duration-200"
+            >
+              Autofill {isCandidate ? 'Candidate' : 'HR'} Data
+            </button>
+
+            {/* Sign Up Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 dark:bg-primary-500 hover:bg-primary-700 dark:hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+            >
+              {loading ? 'Creating account...' : 'Sign up'}
+            </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <Link
-              to="/signin"
-              className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-            >
-              Already have an account? Sign in
-            </Link>
+          {/* Footer */}
+          <div className="mt-6">
+            <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+              Already have an account?{' '}
+              <Link to="/signin" className="font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300">
+                Log in
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Side - Image with Overlay */}
+      <div className="hidden lg:block relative flex-1 bg-gray-800">
+        <img
+          className="absolute inset-0 h-full w-full object-cover"
+          src="/assets/hiring.jpg"
+          alt="Team collaboration"
+          onError={(e) => {
+            console.log('Image failed to load:', e.target.src);
+            e.target.style.display = 'none';
+          }}
+        />
+        <div className="absolute inset-0 bg-primary-600 mix-blend-multiply" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+        
+        {/* Content Overlay */}
+        <div className="absolute inset-0 flex flex-col justify-center px-12 text-white">
+          <div className="max-w-md">
+            <h2 className="text-4xl font-bold italic mb-4">
+              Enter<br />
+              the Future
+            </h2>
+            <h3 className="text-3xl font-light mb-6">
+              of Talent Flow,<br />
+              today
+            </h3>
+            
+            {/* Stats Card Mockup */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 mt-8">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                  <Users className="w-4 h-4" />
+                </div>
+                <span className="text-sm text-white/80">View All</span>
+              </div>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-white/90">Active Recruiters</span>
+                  <span className="text-lg font-semibold">2,546</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-white/90">Open Positions</span>
+                  <span className="text-lg font-semibold">1,234</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-white/90">Successful Hires</span>
+                  <span className="text-lg font-semibold">12,347</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

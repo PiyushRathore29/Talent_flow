@@ -81,7 +81,7 @@ const ProcessSection = () => {
   ];
 
   return (
-    <section className="bg-white dark:bg-black py-12 lg:py-24 overflow-hidden transition-colors duration-200">
+    <section className="bg-white dark:bg-black overflow-hidden transition-colors duration-200">
       <div className="px-4 sm:px-8 lg:px-24">
         <div className="max-w-screen-xl mx-auto">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-12 lg:mb-24 gap-4">

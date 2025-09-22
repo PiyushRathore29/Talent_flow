@@ -72,10 +72,10 @@ const DashboardPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black">
+    <div className="bg-white dark:bg-black overflow-hidden transition-colors duration-200">
       {/* Hero Section */}
       <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-black">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="text-center">
             <h1 className="text-hero font-impact font-black uppercase text-white leading-none mb-4 lg:mb-8 tracking-tight">
               TALENT

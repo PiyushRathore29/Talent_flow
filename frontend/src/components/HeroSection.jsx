@@ -2,7 +2,7 @@ import React from 'react';
 
 const HeroSection = () => {
   return (
-    <section className="min-h-screen bg-white dark:bg-black relative overflow-hidden transition-colors duration-200">
+    <section className="bg-white dark:bg-black overflow-hidden transition-colors duration-200 relative">
       <div className="pt-32 lg:pt-40 pb-12 lg:pb-24 px-4 sm:px-8 lg:px-24">
         <div className="max-w-screen-xl mx-auto">
           <div className="mb-12 lg:mb-24">

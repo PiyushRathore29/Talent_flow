@@ -3,7 +3,7 @@ import React from 'react';
 const Footer = () => {
   return (
     <footer className="bg-primary-500 text-white overflow-hidden">
-      <div className="px-4 sm:px-8 lg:px-24 py-12 lg:py-24 min-h-screen lg:min-h-[67.5rem] flex flex-col justify-between">
+      <div className="px-4 sm:px-8 lg:px-24 py-12 lg:py-24 min-h-screen lg:min-h-[10.5rem] flex flex-col justify-between">
         <div className="flex justify-between items-start">
           <div className="flex-1">
             <h2 className="font-impact font-black uppercase text-white leading-none text-display">
@@ -12,10 +12,10 @@ const Footer = () => {
           </div>
         </div>
 
-        <div className="flex flex-col gap-12 lg:gap-24">
-          <div className="flex flex-col lg:flex-row justify-between gap-12 lg:gap-24">
-            <div className="grid grid-cols-2 lg:flex lg:gap-24 gap-8 flex-1">
-              <div className="flex flex-col items-start lg:items-center gap-6 lg:gap-8">
+        <div className="flex flex-col gap-8 lg:gap-12">
+          <div className="flex flex-col lg:flex-row justify-between gap-8 lg:gap-12">
+            <div className="grid grid-cols-2 lg:flex lg:gap-16 gap-8 flex-1">
+              <div className="flex flex-col items-start lg:items-center gap-4 lg:gap-6">
                 <p className="text-medium font-times italic text-white/60">
                   (Navigate)
                 </p>
@@ -35,7 +35,7 @@ const Footer = () => {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-6 lg:gap-8">
+              <div className="flex flex-col gap-4 lg:gap-6">
                 <p className="text-medium font-times italic text-white/60">
                   (Resources)
                 </p>
@@ -55,7 +55,7 @@ const Footer = () => {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-6 lg:gap-8">
+              <div className="flex flex-col gap-4 lg:gap-6">
                 <p className="text-medium font-times italic text-white/60">
                   (Legal)
                 </p>
@@ -69,7 +69,7 @@ const Footer = () => {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-6 lg:gap-8">
+              <div className="flex flex-col gap-4 lg:gap-6">
                 <p className="text-medium font-times italic text-white/60">
                   (Socials)
                 </p>
@@ -91,7 +91,7 @@ const Footer = () => {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex flex-col items-start sm:items-center group cursor-pointer">
               <span className="text-nav font-inter font-semibold text-white group-hover:opacity-70 transition-opacity">
-                Powered by Dualite
+                Terms of Service
               </span>
               <div className="w-full h-0.5 bg-white group-hover:opacity-70 transition-opacity" />
             </div>

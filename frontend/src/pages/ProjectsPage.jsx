@@ -42,7 +42,7 @@ const ProjectsPage = () => {
   ];
 
   return (
-    <section className="min-h-screen bg-white dark:bg-black relative overflow-hidden transition-colors duration-200">
+    <section className="bg-white dark:bg-black overflow-hidden transition-colors duration-200 relative">
       <Header />
       
       <div className="pt-32 lg:pt-40 pb-12 lg:pb-24 px-4 sm:px-8 lg:px-24">

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Eye, EyeOff, User, Mail, Lock, Building, Globe, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, User, Mail, Lock, Building, Globe, AlertCircle, BarChart3, TrendingUp } from 'lucide-react';
+import Logo from '../components/Logo';
 
 const SignInPage = () => {
   const navigate = useNavigate();
@@ -13,6 +14,13 @@ const SignInPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const autofillDemo = () => {
+    setFormData({
+      email: 'hr@techcorp.com',
+      password: 'password123'
+    });
+  };
 
   const handleChange = (e) => {
     setFormData({
@@ -44,54 +52,57 @@ const SignInPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-black flex flex-col justify-center py-12 sm:px-6 lg:px-8 transition-colors duration-200">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Welcome back</h2>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">Sign in to your TalentFlow account</p>
-        </div>
-      </div>
+    <div className="min-h-screen bg-white dark:bg-black flex transition-colors duration-200">
+      {/* Left Side - Form */}
+      <div className="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24">
+        <div className="mx-auto w-full max-w-sm lg:w-96">
+          
+          {/* Logo and Header */}
+          <div className="mb-8">
+            <Logo />
+            <h2 className="mt-6 text-3xl font-bold text-gray-900 dark:text-white">Get Started</h2>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+              Welcome to TalentFlow - Let's create your account
+            </p>
+          </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white dark:bg-black py-8 px-4 shadow-lg rounded-lg sm:px-10 transition-colors duration-200 border dark:border-gray-800">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form className="space-y-4" onSubmit={handleSubmit}>
             {error && (
-              <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm">
+              <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 {error}
               </div>
             )}
 
+            {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Email address
+                Email
               </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-                </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="pl-10 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm placeholder-gray-400 dark:placeholder-gray-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200"
-                  placeholder="Enter your email"
-                />
-              </div>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={formData.email}
+                onChange={handleChange}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200"
+                placeholder="hr@talentflow.com"
+              />
             </div>
 
+            {/* Password */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Password
-              </label>
+              <div className="flex items-center justify-between">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Password
+                </label>
+                <Link to="#" className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300">
+                  Forgot?
+                </Link>
+              </div>
               <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-                </div>
                 <input
                   id="password"
                   name="password"
@@ -100,8 +111,8 @@ const SignInPage = () => {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className="pl-10 pr-10 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm placeholder-gray-400 dark:placeholder-gray-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200"
-                  placeholder="Enter your password"
+                  className="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200"
+                  placeholder="Enter password"
                 />
                 <button
                   type="button"
@@ -109,51 +120,106 @@ const SignInPage = () => {
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                    <EyeOff className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                   ) : (
-                    <Eye className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                    <Eye className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                   )}
                 </button>
               </div>
             </div>
 
-            <div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Signing in...' : 'Sign in'}
-              </button>
-            </div>
+            {/* Autofill Demo Button */}
+            <button
+              type="button"
+              onClick={autofillDemo}
+              className="w-full py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors duration-200"
+            >
+              Autofill Demo Login
+            </button>
+
+            {/* Sign In Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 dark:bg-primary-500 hover:bg-primary-700 dark:hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+            >
+              {loading ? 'Signing in...' : 'Sign up'}
+            </button>
           </form>
 
+          {/* Footer */}
           <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Don't have an account?</span>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <Link
-                to="/signup"
-                className="w-full flex justify-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              >
-                Create new account
+            <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+              Already have an account?{' '}
+              <Link to="#" className="font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300">
+                Log in
               </Link>
-            </div>
+            </p>
           </div>
 
-          <div className="mt-6 text-center">
-            <p className="text-xs text-gray-500">
-              Demo Credentials:<br />
+          {/* Demo Credentials */}
+          <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+            <p className="text-xs text-gray-600 dark:text-gray-400 text-center">
+              <strong>Demo Credentials:</strong><br />
               <strong>HR:</strong> hr@techcorp.com / password123<br />
               <strong>Candidate:</strong> john.doe@example.com / password123
             </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Side - Image with Overlay */}
+      <div className="hidden lg:block relative flex-1 bg-gray-800">
+        <img
+          className="absolute inset-0 h-full w-full object-cover"
+          src="/assets/hiring.jpg"
+          alt="Office workspace"
+          onError={(e) => {
+            console.log('Image failed to load:', e.target.src);
+            e.target.style.display = 'none';
+          }}
+        />
+        <div className="absolute inset-0 bg-primary-600 mix-blend-multiply" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+        
+        {/* Content Overlay */}
+        <div className="absolute inset-0 flex flex-col justify-center px-12 text-white">
+          <div className="max-w-md">
+            <h2 className="text-4xl font-bold italic mb-4">
+              Enter<br />
+              the Future
+            </h2>
+            <h3 className="text-3xl font-light mb-6">
+              of Recruitment,<br />
+              today
+            </h3>
+            
+            {/* Analytics Card Mockup */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 mt-8">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                  <BarChart3 className="w-4 h-4" />
+                </div>
+                <span className="text-sm text-white/80">View All</span>
+              </div>
+              
+              <div className="mb-4">
+                <div className="text-2xl font-bold mb-1">12,347.23 $</div>
+                <div className="text-sm text-white/80">Combined balance</div>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-white/90">Primary Card</span>
+                  <span className="text-lg font-semibold">2,546.64$</span>
+                </div>
+                <div className="text-xs text-white/70">3495 •••• •••• 6917</div>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-4 bg-white/20 rounded-sm"></div>
+                  <span className="text-xs text-white/70">VISA</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
