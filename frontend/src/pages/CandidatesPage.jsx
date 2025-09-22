@@ -9,6 +9,7 @@ import {
   DndContext,
   DragOverlay,
   closestCenter,
+  rectIntersection,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -260,7 +261,15 @@ const CandidatesPage = () => {
       });
       
       if (response.ok) {
+        // Update both candidates arrays
         setCandidates(prev => 
+          prev.map(candidate => 
+            candidate.id === candidateId 
+              ? { ...candidate, stage: newStage }
+              : candidate
+          )
+        );
+        setAllCandidates(prev => 
           prev.map(candidate => 
             candidate.id === candidateId 
               ? { ...candidate, stage: newStage }
@@ -284,6 +293,7 @@ const CandidatesPage = () => {
       if (response.ok) {
         const newCandidate = await response.json();
         setCandidates(prev => [...prev, newCandidate]);
+        setAllCandidates(prev => [...prev, newCandidate]);
       }
     } catch (error) {
       console.error('Error creating candidate:', error);
@@ -414,14 +424,15 @@ const CandidatesPage = () => {
     fetchCandidates();
   }, [currentPage, search, stageFilter]);
 
-  // Group candidates by stage for kanban view
+  // Group candidates by stage for kanban view (use allCandidates for full dataset)
   const candidatesByStage = stages.reduce((acc, stage) => {
-    acc[stage.id] = candidates.filter(candidate => candidate.stage === stage.id);
+    acc[stage.id] = allCandidates.filter(candidate => candidate.stage === stage.id);
     return acc;
   }, {});
 
   // Debug logging
-  console.log('Candidates data:', candidates);
+  console.log('All Candidates data:', allCandidates);
+  console.log('Paginated Candidates data:', candidates);
   console.log('Candidates by stage:', candidatesByStage);
 
   if (loading) {
@@ -646,7 +657,7 @@ const CandidatesPage = () => {
         {viewMode === 'kanban' ? (
           <DndContext
             sensors={sensors}
-            collisionDetection={closestCenter}
+            collisionDetection={rectIntersection}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
             onDragCancel={handleDragCancel}
@@ -705,7 +716,7 @@ const DroppableColumn = ({ stage, candidatesByStage, jobs, onStageChange, stages
   return (
     <div 
       ref={setNodeRef}
-      className={`bg-gray-100 rounded-lg p-4 transition-colors ${
+      className={`bg-gray-100 rounded-lg p-4 transition-colors min-h-[400px] flex flex-col ${
         isOver ? 'bg-gray-200 ring-2 ring-primary-300' : ''
       }`}
     >
@@ -717,7 +728,7 @@ const DroppableColumn = ({ stage, candidatesByStage, jobs, onStageChange, stages
         </span>
       </div>
       
-      <div className="space-y-3">
+      <div className="space-y-3 flex-1">
         {(candidatesByStage[stage.id] || []).map(candidate => (
           <DraggableCandidateCard 
             key={candidate.id} 
@@ -727,6 +738,17 @@ const DroppableColumn = ({ stage, candidatesByStage, jobs, onStageChange, stages
             onStageChange={onStageChange}
           />
         ))}
+        
+        {/* Empty state with drop hint */}
+        {(!candidatesByStage[stage.id] || candidatesByStage[stage.id].length === 0) && (
+          <div className={`text-center py-8 text-gray-400 border-2 border-dashed border-gray-300 rounded-lg transition-colors ${
+            isOver ? 'border-primary-400 text-primary-500' : ''
+          }`}>
+            <p className="text-sm">
+              {isOver ? 'Drop candidate here' : 'No candidates'}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -832,8 +854,7 @@ const DraggableCandidateCard = ({ candidate, stages, jobs, onStageChange }) => {
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
-      className="cursor-grab active:cursor-grabbing"
+      className="relative"
     >
       <CandidateCard 
         candidate={candidate} 
@@ -841,19 +862,33 @@ const DraggableCandidateCard = ({ candidate, stages, jobs, onStageChange }) => {
         jobs={jobs}
         onStageChange={onStageChange}
         isDraggable
+        dragListeners={listeners}
       />
     </div>
   );
 };
 
 // Candidate Card Component
-const CandidateCard = ({ candidate, stages, jobs, onStageChange, isDraggable = false, isDragOverlay = false }) => {
+const CandidateCard = ({ candidate, stages, jobs, onStageChange, isDraggable = false, isDragOverlay = false, dragListeners = {} }) => {
   const candidateJob = jobs.find(job => job.id === candidate.jobId);
   
   return (
-    <div className={`bg-white rounded-lg p-3 shadow-sm border transition-shadow ${
+    <div className={`bg-white rounded-lg p-3 shadow-sm border transition-shadow relative ${
       isDragOverlay ? 'shadow-lg rotate-3' : 'hover:shadow-md'
     }`}>
+      {/* Drag Handle - only visible when draggable */}
+      {isDraggable && (
+        <div 
+          {...dragListeners}
+          className="absolute top-1 right-1 cursor-grab active:cursor-grabbing p-1 rounded hover:bg-gray-100 transition-colors"
+          title="Drag to move candidate"
+        >
+          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+          </svg>
+        </div>
+      )}
+      
       <div className="flex items-center justify-between mb-2">
         <Link
           to={`/candidates/${candidate.id}`}

@@ -195,7 +195,7 @@ const JobDetailPage = () => {
               </div>
             </div>
 
-            {/* Quick Stats */}
+            {/* Quick Info */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <h3 className="text-lg font-impact font-bold uppercase text-primary-500 tracking-tight mb-4">
                 Quick Info
@@ -203,19 +203,19 @@ const JobDetailPage = () => {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Status:</span>
-                  <span className="font-medium">{candidate.stage}</span>
+                  <span className="font-medium">{job.status}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Applied:</span>
-                  <span className="font-medium">
-                    {candidate.appliedDate ? new Date(candidate.appliedDate).toLocaleDateString() : 'Unknown'}
-                  </span>
+                  <span className="text-gray-600">Location:</span>
+                  <span className="font-medium">{job.location}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Last Updated:</span>
-                  <span className="font-medium">
-                    {candidate.updatedAt ? new Date(candidate.updatedAt).toLocaleDateString() : 'Unknown'}
-                  </span>
+                  <span className="text-gray-600">Type:</span>
+                  <span className="font-medium">{job.type}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Experience:</span>
+                  <span className="font-medium">{job.experience}</span>
                 </div>
               </div>
             </div>
