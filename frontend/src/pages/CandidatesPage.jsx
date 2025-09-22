@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line
@@ -31,21 +31,23 @@ import Footer from '../components/Footer';
 import CandidatesBoard from '../components/CandidatesBoard';
 
 // Create Candidate Button Component
-const CreateCandidateButton = ({ onCreate, jobs }) => {
+const CreateCandidateButton = ({ onCreate, jobs, defaultJobId }) => {
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     stage: 'applied',
-    jobId: jobs.length > 0 ? jobs[0].id : 1 // Default to first job
+    jobId: defaultJobId ? parseInt(defaultJobId) : (jobs.length > 0 ? jobs[0].id : 1)
   });
 
-  // Update default jobId when jobs are loaded
+  // Update default jobId when jobs are loaded or defaultJobId changes
   useEffect(() => {
-    if (jobs.length > 0 && !formData.jobId) {
+    if (defaultJobId) {
+      setFormData(prev => ({ ...prev, jobId: parseInt(defaultJobId) }));
+    } else if (jobs.length > 0 && !formData.jobId) {
       setFormData(prev => ({ ...prev, jobId: jobs[0].id }));
     }
-  }, [jobs, formData.jobId]);
+  }, [jobs, defaultJobId, formData.jobId]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -56,7 +58,12 @@ const CreateCandidateButton = ({ onCreate, jobs }) => {
     }
 
     onCreate(formData);
-    setFormData({ name: '', email: '', stage: 'applied', jobId: jobs.length > 0 ? jobs[0].id : 1 });
+    setFormData({ 
+      name: '', 
+      email: '', 
+      stage: 'applied', 
+      jobId: defaultJobId ? parseInt(defaultJobId) : (jobs.length > 0 ? jobs[0].id : 1)
+    });
     setShowModal(false);
   };
 
@@ -64,53 +71,53 @@ const CreateCandidateButton = ({ onCreate, jobs }) => {
     <>
       <button
         onClick={() => setShowModal(true)}
-        className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+        className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white text-sm font-medium rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors duration-200"
       >
         Add Candidate
       </button>
 
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h2 className="text-2xl font-impact font-bold uppercase text-primary-500 tracking-tight mb-4">Add New Candidate</h2>
+          <div className="bg-white dark:bg-black rounded-lg max-w-md w-full p-6 border border-gray-200 dark:border-gray-800 transition-colors duration-200">
+            <h2 className="text-2xl font-impact font-bold uppercase text-primary-500 dark:text-primary-400 tracking-tight mb-4">Add New Candidate</h2>
             
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-impact font-bold uppercase text-primary-500 tracking-tight mb-2">
+                <label className="block text-sm font-impact font-bold uppercase text-primary-500 dark:text-primary-400 tracking-tight mb-2">
                   Name *
                 </label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-200"
                   placeholder="John Doe"
                   required
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-impact font-bold uppercase text-primary-500 tracking-tight mb-2">
+                <label className="block text-sm font-impact font-bold uppercase text-primary-500 dark:text-primary-400 tracking-tight mb-2">
                   Email *
                 </label>
                 <input
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-200"
                   placeholder="john@example.com"
                   required
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-impact font-bold uppercase text-primary-500 tracking-tight mb-2">
+                <label className="block text-sm font-impact font-bold uppercase text-primary-500 dark:text-primary-400 tracking-tight mb-2">
                   Apply to Job *
                 </label>
                 <select
                   value={formData.jobId}
                   onChange={(e) => setFormData({...formData, jobId: parseInt(e.target.value)})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200"
                   required
                 >
                   {jobs.map(job => (
@@ -122,13 +129,13 @@ const CreateCandidateButton = ({ onCreate, jobs }) => {
               </div>
               
               <div>
-                <label className="block text-sm font-impact font-bold uppercase text-primary-500 tracking-tight mb-2">
+                <label className="block text-sm font-impact font-bold uppercase text-primary-500 dark:text-primary-400 tracking-tight mb-2">
                   Stage
                 </label>
                 <select
                   value={formData.stage}
                   onChange={(e) => setFormData({...formData, stage: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200"
                 >
                   <option value="applied">Applied</option>
                   <option value="screen">Screening</option>
@@ -143,13 +150,13 @@ const CreateCandidateButton = ({ onCreate, jobs }) => {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 dark:bg-blue-500 rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors duration-200"
                 >
                   Add Candidate
                 </button>
@@ -163,9 +170,13 @@ const CreateCandidateButton = ({ onCreate, jobs }) => {
 };
 
 const CandidatesPage = () => {
+  const [searchParams] = useSearchParams();
+  const jobId = searchParams.get('jobId');
+  
   // State variables
   const [candidates, setCandidates] = useState([]);
   const [jobs, setJobs] = useState([]);
+  const [currentJob, setCurrentJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
@@ -305,15 +316,29 @@ const CandidatesPage = () => {
       try {
         setLoading(true);
         
+        // Fetch jobs first
+        const jobsResponse = await fetch('/api/jobs');
+        const jobsData = await jobsResponse.json();
+        const allJobs = jobsData.data || jobsData;
+        setJobs(allJobs);
+        
+        // If jobId is provided, find the specific job
+        if (jobId) {
+          const specificJob = allJobs.find(job => job.id === parseInt(jobId));
+          setCurrentJob(specificJob);
+        }
+        
         // Fetch candidates
         const candidatesResponse = await fetch('/api/candidates');
         const candidatesData = await candidatesResponse.json();
-        setCandidates(candidatesData.data || candidatesData);
+        const allCandidates = candidatesData.data || candidatesData;
         
-        // Fetch jobs
-        const jobsResponse = await fetch('/api/jobs');
-        const jobsData = await jobsResponse.json();
-        setJobs(jobsData.data || jobsData);
+        // Filter candidates by jobId if provided
+        const filteredCandidates = jobId 
+          ? allCandidates.filter(candidate => candidate.jobId === parseInt(jobId))
+          : allCandidates;
+        
+        setCandidates(filteredCandidates);
         
       } catch (err) {
         setError(err.message);
@@ -323,7 +348,7 @@ const CandidatesPage = () => {
     };
 
     fetchData();
-  }, []);
+  }, [jobId]);
 
   // Kanban stages
   const stages = [
@@ -377,7 +402,14 @@ const CandidatesPage = () => {
       const allCandidatesResponse = await fetch('/api/candidates?pageSize=1000');
       if (allCandidatesResponse.ok) {
         const allData = await allCandidatesResponse.json();
-        setAllCandidates(allData.data || []);
+        const allCandidatesData = allData.data || [];
+        
+        // Filter by jobId if provided
+        const filteredAllCandidates = jobId 
+          ? allCandidatesData.filter(candidate => candidate.jobId === parseInt(jobId))
+          : allCandidatesData;
+        
+        setAllCandidates(filteredAllCandidates);
       }
       
       // Fetch paginated candidates for display
@@ -385,7 +417,8 @@ const CandidatesPage = () => {
         page: currentPage.toString(),
         pageSize: pageSize.toString(),
         ...(search && { search }),
-        ...(stageFilter && { stage: stageFilter })
+        ...(stageFilter && { stage: stageFilter }),
+        ...(jobId && { jobId: jobId })
       });
 
       const response = await fetch(`/api/candidates?${params}`);
@@ -394,7 +427,14 @@ const CandidatesPage = () => {
       }
       
       const data = await response.json();
-      setCandidates(data.data || []);
+      const candidatesData = data.data || [];
+      
+      // Filter by jobId if provided (in case API doesn't support jobId filtering)
+      const filteredCandidates = jobId 
+        ? candidatesData.filter(candidate => candidate.jobId === parseInt(jobId))
+        : candidatesData;
+      
+      setCandidates(filteredCandidates);
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -422,7 +462,7 @@ const CandidatesPage = () => {
 
   useEffect(() => {
     fetchCandidates();
-  }, [currentPage, search, stageFilter]);
+  }, [currentPage, search, stageFilter, jobId]);
 
   // Group candidates by stage for kanban view (use allCandidates for full dataset)
   const candidatesByStage = stages.reduce((acc, stage) => {
@@ -450,41 +490,54 @@ const CandidatesPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-4xl font-impact font-black uppercase text-primary-500 leading-none tracking-tight">Candidates</h1>
-              <p className="mt-1 text-sm text-gray-500">
-                Manage candidate pipeline • GET /candidates?search=&stage=&page=
+              <h1 className="text-4xl font-impact font-black uppercase text-primary-500 dark:text-primary-400 leading-none tracking-tight">
+                {currentJob ? `${currentJob.title} - Candidates` : 'Candidates'}
+              </h1>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {currentJob 
+                  ? `Candidates who applied for ${currentJob.title}` 
+                  : 'Manage candidate pipeline • GET /candidates?search=&stage=&page='
+                }
               </p>
             </div>
             <div className="flex items-center space-x-4">
               <Link
                 to="/dashboard"
-                className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
               >
                 ← Dashboard
               </Link>
-              <div className="flex rounded-md border border-gray-300">
+              {currentJob && (
+                <Link
+                  to="/candidates"
+                  className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
+                >
+                  All Candidates
+                </Link>
+              )}
+              <div className="flex rounded-md border border-gray-300 dark:border-gray-600">
                 <button
                   onClick={() => setViewMode('kanban')}
                   className={`px-3 py-2 text-sm font-medium transition-colors ${
                     viewMode === 'kanban' 
                       ? 'bg-blue-600 text-white' 
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                   }`}
                 >
                   Kanban
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`px-3 py-2 text-sm font-medium transition-colors border-l border-gray-300 ${
+                  className={`px-3 py-2 text-sm font-medium transition-colors border-l border-gray-300 dark:border-gray-600 ${
                     viewMode === 'list' 
                       ? 'bg-blue-600 text-white' 
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                   }`}
                 >
                   List
                 </button>
               </div>
-              <CreateCandidateButton onCreate={handleCreateCandidate} jobs={jobs} />
+              <CreateCandidateButton onCreate={handleCreateCandidate} jobs={jobs} defaultJobId={jobId} />
             </div>
           </div>
         </div>
@@ -600,24 +653,24 @@ const CandidatesPage = () => {
         )}
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+        <div className="bg-white dark:bg-black rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-6 mb-6 transition-colors duration-200">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-impact font-bold uppercase text-primary-500 tracking-tight mb-2">Search</label>
+              <label className="block text-sm font-impact font-bold uppercase text-primary-500 dark:text-primary-400 tracking-tight mb-2">Search</label>
               <input
                 type="text"
                 placeholder="Search candidates..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-200"
               />
             </div>
             <div>
-              <label className="block text-sm font-impact font-bold uppercase text-primary-500 tracking-tight mb-2">Stage</label>
+              <label className="block text-sm font-impact font-bold uppercase text-primary-500 dark:text-primary-400 tracking-tight mb-2">Stage</label>
               <select
                 value={stageFilter}
                 onChange={(e) => setStageFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200"
               >
                 <option value="">All Stages</option>
                 {stages.map(stage => (
@@ -632,7 +685,7 @@ const CandidatesPage = () => {
                   setStageFilter('');
                   setCurrentPage(1);
                 }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
               >
                 Clear Filters
               </button>
