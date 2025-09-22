@@ -281,10 +281,10 @@ const AssessmentTakePage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-black flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading assessment...</p>
+          <p className="mt-4 text-gray-600 dark:text-gray-300">Loading assessment...</p>
         </div>
       </div>
     );
@@ -292,11 +292,11 @@ const AssessmentTakePage = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-black flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Error</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Error</h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">{error}</p>
           <button
             onClick={() => navigate('/dashboard/candidate')}
             className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
@@ -310,24 +310,24 @@ const AssessmentTakePage = () => {
 
   if (!hasStarted) {
     return (
-      <div className="min-h-screen bg-gray-50 py-12">
+      <div className="min-h-screen bg-gray-50 dark:bg-black py-12">
         <div className="max-w-2xl mx-auto px-4">
-          <div className="bg-white rounded-lg shadow-md p-8">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-md p-8 border dark:border-gray-800">
             <div className="text-center mb-8">
               <FileText className="w-16 h-16 text-primary-600 mx-auto mb-4" />
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">{assessment.title}</h1>
-              <p className="text-gray-600">{assessment.description}</p>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{assessment.title}</h1>
+              <p className="text-gray-600 dark:text-gray-300">{assessment.description}</p>
             </div>
             
             <div className="space-y-4 mb-8">
-              <div className="flex items-center justify-between py-3 border-b">
-                <span className="font-medium text-gray-700">Number of Questions</span>
-                <span className="text-gray-900">{questions.length}</span>
+              <div className="flex items-center justify-between py-3 border-b dark:border-gray-700">
+                <span className="font-medium text-gray-700 dark:text-gray-300">Number of Questions</span>
+                <span className="text-gray-900 dark:text-white">{questions.length}</span>
               </div>
               
               {assessment.timeLimit && (
-                <div className="flex items-center justify-between py-3 border-b">
-                  <span className="font-medium text-gray-700">Time Limit</span>
+                <div className="flex items-center justify-between py-3 border-b dark:border-gray-700">
+                  <span className="font-medium text-gray-700 dark:text-gray-300">Time Limit</span>
                   <span className="text-gray-900 flex items-center gap-2">
                     <Clock className="w-4 h-4" />
                     {assessment.timeLimit} minutes
@@ -373,21 +373,21 @@ const AssessmentTakePage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-black py-8">
       <div className="max-w-4xl mx-auto px-4">
         {/* Header with timer */}
-        <div className="bg-white rounded-lg shadow-sm border p-4 mb-6 sticky top-0 z-10">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border dark:border-gray-800 p-4 mb-6 sticky top-0 z-10">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold text-gray-900">{assessment.title}</h1>
-              <p className="text-gray-600 text-sm">{questions.length} questions</p>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">{assessment.title}</h1>
+              <p className="text-gray-600 dark:text-gray-300 text-sm">{questions.length} questions</p>
             </div>
             
             {timeRemaining !== null && (
-              <div className="flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg">
-                <Clock className="w-4 h-4 text-gray-600" />
+              <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-lg">
+                <Clock className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                 <span className={`font-mono font-medium ${
-                  timeRemaining < 300 ? 'text-red-600' : 'text-gray-900'
+                  timeRemaining < 300 ? 'text-red-600' : 'text-gray-900 dark:text-white'
                 }`}>
                   {formatTime(timeRemaining)}
                 </span>

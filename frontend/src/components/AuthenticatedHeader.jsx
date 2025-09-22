@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Logo from './Logo';
+import ThemeToggle from './ThemeToggle';
 import { User, LogOut, ChevronDown, Briefcase, Users, BarChart } from 'lucide-react';
 
 const AuthenticatedHeader = () => {
@@ -16,11 +17,11 @@ const AuthenticatedHeader = () => {
   };
 
   const getLinkClass = (path) => {
-    let baseClass = 'text-nav font-inter font-semibold transition-opacity text-primary-500 hover:opacity-70';
+    let baseClass = 'text-nav font-inter font-semibold transition-opacity text-primary-500 dark:text-white hover:opacity-70';
     if (location.pathname === path || location.pathname.startsWith(path)) {
       return baseClass;
     }
-    return `${baseClass} text-primary-500/80`;
+    return `${baseClass} text-primary-500/80 dark:text-white/80`;
   };
 
   const getNavigationLinks = () => {
@@ -38,7 +39,7 @@ const AuthenticatedHeader = () => {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 px-4 sm:px-8 lg:px-24 py-4 sticky top-0 z-50">
+    <header className="bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800 px-4 sm:px-8 lg:px-24 py-4 sticky top-0 z-50 transition-colors duration-200">
       <div className="flex items-center justify-between max-w-screen-2xl mx-auto">
         <Link to={user?.role === 'hr' ? '/dashboard/employer' : '/dashboard/candidate'}>
           <Logo />
@@ -58,29 +59,30 @@ const AuthenticatedHeader = () => {
         </nav>
 
         <div className="flex items-center gap-4">
+          <ThemeToggle />
           {/* User Menu */}
           <div className="relative">
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
             >
-              <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                <User className="w-4 h-4 text-primary-600" />
+              <div className="w-8 h-8 bg-primary-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+                <User className="w-4 h-4 text-primary-600 dark:text-gray-300" />
               </div>
               <div className="hidden sm:block text-left">
-                <div className="text-sm font-semibold text-gray-900">
+                <div className="text-sm font-semibold text-gray-900 dark:text-white">
                   {user?.firstName} {user?.lastName}
                 </div>
-                <div className="text-xs text-gray-500 capitalize">
+                <div className="text-xs text-gray-500 dark:text-gray-300 capitalize">
                   {user?.role} {user?.companyName && `• ${user.companyName}`}
                 </div>
               </div>
-              <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-4 h-4 text-gray-400 dark:text-gray-300 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Dropdown Menu */}
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg py-2 z-50">
+              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-black border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg py-2 z-50">
                 <div className="px-4 py-2 border-b border-gray-100">
                   <div className="text-sm font-semibold text-gray-900">
                     {user?.firstName} {user?.lastName}

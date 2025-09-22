@@ -3,10 +3,10 @@ import React from 'react';
 const ServiceDetail = ({ title, description }) => {
   return (
     <div className="flex flex-col gap-4">
-      <h4 className="text-subheading font-inter font-semibold text-primary-500 leading-tight tracking-tighter">
+      <h4 className="text-subheading font-inter font-semibold text-primary-500 dark:text-white leading-tight tracking-tighter transition-colors duration-200">
         {title}
       </h4>
-      <p className="text-body font-inter text-primary-500/60 leading-relaxed">
+      <p className="text-body font-inter text-primary-500/60 dark:text-gray-300 leading-relaxed transition-colors duration-200">
         {description}
       </p>
     </div>
@@ -34,19 +34,19 @@ const BrandStrategySection = () => {
   ];
 
   return (
-    <section className="bg-white py-12 lg:py-24 overflow-hidden">
+    <section className="bg-white dark:bg-black py-12 lg:py-24 overflow-hidden transition-colors duration-200">
       <div className="px-4 sm:px-8 lg:px-24">
         <div className="max-w-screen-xl mx-auto">
           <div className="flex flex-col lg:flex-row gap-12 lg:gap-24">
             <div className="lg:w-2/5">
-              <h2 className="font-impact font-black uppercase text-primary-500 leading-none text-display lg:text-display-sm tracking-tight">
+              <h2 className="font-impact font-black uppercase text-primary-500 dark:text-white leading-none text-display lg:text-display-sm tracking-tight transition-colors duration-200">
                 FOR<br />EMPLOYERS
               </h2>
             </div>
             
             <div className="lg:w-3/5 flex flex-col gap-12 lg:gap-20">
               <div className="flex flex-col gap-8">
-                <p className="text-large font-inter font-semibold text-primary-500 leading-tight tracking-tighter">
+                <p className="text-large font-inter font-semibold text-primary-500 dark:text-gray-300 leading-tight tracking-tighter transition-colors duration-200">
                   We provide powerful tools to help you find, attract, and hire the best talent, streamlining your recruitment process from start to finish.
                 </p>
               </div>
@@ -59,7 +59,7 @@ const BrandStrategySection = () => {
                       description={service.description}
                     />
                     {index < services.length - 1 && (
-                      <div className="w-full h-px bg-primary-200 mt-12" />
+                      <div className="w-full h-px bg-primary-200 dark:bg-gray-700 mt-12 transition-colors duration-200" />
                     )}
                   </div>
                 ))}

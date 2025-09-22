@@ -50,18 +50,18 @@ const JobDetailPage = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-black transition-colors duration-200">
         <AuthenticatedHeader />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
+          <div className="bg-white dark:bg-black rounded-lg shadow-sm border dark:border-gray-800 p-8 text-center transition-colors duration-200">
             <div className="text-red-400 text-4xl mb-4">⚠️</div>
-            <h2 className="text-2xl font-impact font-bold uppercase text-primary-500 tracking-tight mb-4">
+            <h2 className="text-2xl font-impact font-bold uppercase text-primary-500 dark:text-white tracking-tight mb-4">
               {error}
             </h2>
-            <p className="text-gray-500 mb-6">The job you are looking for does not exist.</p>
+            <p className="text-gray-500 dark:text-gray-300 mb-6">The job you are looking for does not exist.</p>
             <Link 
               to="/employer-dashboard" 
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-6 py-3 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
             >
               ← Back to Dashboard
             </Link>
@@ -72,26 +72,26 @@ const JobDetailPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-black transition-colors duration-200">
       <AuthenticatedHeader />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+        <div className="bg-white dark:bg-black rounded-lg shadow-sm border dark:border-gray-800 p-6 mb-6 transition-colors duration-200">
           <div className="flex justify-between items-start">
             <div>
-              <h1 className="text-3xl font-impact font-bold uppercase text-primary-500 tracking-tight">
+              <h1 className="text-3xl font-impact font-bold uppercase text-primary-500 dark:text-white tracking-tight">
                 {job.title}
               </h1>
-              <p className="text-gray-600 mt-1">{job.department || 'General'}</p>
-              <p className="text-sm text-blue-600 mt-1">
+              <p className="text-gray-600 dark:text-gray-300 mt-1">{job.department || 'General'}</p>
+              <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
                 {job.location || 'Remote'} • {job.employmentType || 'Full-time'}
               </p>
             </div>
             <div className="flex items-center space-x-4">
               <Link
                 to="/employer-dashboard"
-                className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
               >
                 ← Back to Dashboard
               </Link>

@@ -120,7 +120,7 @@ const AssessmentBuilderPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-black flex items-center justify-center transition-colors duration-200">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
@@ -128,10 +128,10 @@ const AssessmentBuilderPage = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-black flex items-center justify-center transition-colors duration-200">
         <div className="text-center">
-          <h1 className="text-3xl font-impact font-black uppercase text-primary-500 leading-tight tracking-tight mb-4">Error</h1>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <h1 className="text-3xl font-impact font-black uppercase text-primary-500 dark:text-white leading-tight tracking-tight mb-4">Error</h1>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">{error}</p>
           <Link
             to="/assessments"
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
@@ -144,14 +144,14 @@ const AssessmentBuilderPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-black transition-colors duration-200">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <div className="bg-white dark:bg-black shadow-sm border-b dark:border-gray-800 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-3xl font-impact font-black uppercase text-primary-500 leading-tight tracking-tight">Assessment Builder</h1>
-              <p className="mt-1 text-sm text-gray-500">
+              <h1 className="text-3xl font-impact font-black uppercase text-primary-500 dark:text-white leading-tight tracking-tight">Assessment Builder</h1>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-300">
                 {job?.title} • PUT /assessments/{jobId}
               </p>
             </div>

@@ -1,12 +1,15 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { CandidateProvider } from './hooks/useCandidates';
 import { JobsProvider } from './hooks/useJobs';
 
 // Public pages
 import AboutPage from './pages/AboutPage';
 import ServicesPage from './pages/ServicesPage';
+import CompaniesPage from './pages/CompaniesPage';
+import ProjectsPage from './pages/ProjectsPage';
 import SignUpPage from './pages/SignUpPage';
 import SignInPage from './pages/SignInPage';
 
@@ -69,11 +72,13 @@ function AppRoutes() {
   return (
     <JobsProvider>
       <CandidateProvider>
-        <div className="min-h-screen bg-white">
+        <div className="min-h-screen bg-white dark:bg-black transition-colors duration-200">
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<AboutPage />} />
             <Route path="/features" element={<ServicesPage />} />
+            <Route path="/companies" element={<CompaniesPage />} />
+            <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/about" element={<AboutPage />} />
             
             {/* Auth routes */}
@@ -155,7 +160,6 @@ function AppRoutes() {
             {/* Redirect legacy routes */}
             <Route path="/dashboard/employer" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard/candidate" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/projects" element={<Navigate to="/jobs" replace />} />
             
             {/* Catch all route */}
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -169,9 +173,11 @@ function AppRoutes() {
 function App() {
   return (
     <Router>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </ThemeProvider>
     </Router>
   );
 }

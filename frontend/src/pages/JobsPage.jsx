@@ -123,14 +123,14 @@ const JobsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-black transition-colors duration-200">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <div className="bg-white dark:bg-black shadow-sm border-b dark:border-gray-800 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-hero font-impact font-black uppercase text-primary-500 leading-none mb-4 tracking-tight">JOBS</h1>
-              <p className="text-medium font-impact font-black uppercase text-primary-700 leading-none tracking-tight">
+              <h1 className="text-hero font-impact font-black uppercase text-primary-500 dark:text-white leading-none mb-4 tracking-tight">JOBS</h1>
+              <p className="text-medium font-impact font-black uppercase text-primary-700 dark:text-gray-300 leading-none tracking-tight">
                 MANAGE JOB POSTINGS • GET /JOBS?SEARCH=&STATUS=&PAGE=&PAGESIZE=&SORT=
               </p>
             </div>

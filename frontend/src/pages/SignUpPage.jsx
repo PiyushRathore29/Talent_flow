@@ -89,16 +89,16 @@ const SignUpPage = () => {
 
   if (step === 1) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-gray-50 dark:bg-black flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <div className="text-center">
-            <h2 className="text-3xl font-bold text-gray-900">Join TalentFlow</h2>
-            <p className="mt-2 text-gray-600">Choose your account type to get started</p>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Join TalentFlow</h2>
+            <p className="mt-2 text-gray-600 dark:text-gray-300">Choose your account type to get started</p>
           </div>
         </div>
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="bg-white py-8 px-4 shadow-lg rounded-lg sm:px-10">
+          <div className="bg-white dark:bg-gray-900 py-8 px-4 shadow-lg rounded-lg sm:px-10">
             <div className="space-y-4">
               <button
                 onClick={() => handleRoleSelect('hr')}

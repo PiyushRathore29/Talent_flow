@@ -23,30 +23,30 @@ const DatabaseSeederPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-black flex items-center justify-center">
       <div className="max-w-2xl mx-auto p-8">
-        <div className="bg-white rounded-lg shadow-lg p-8">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-8 border dark:border-gray-800">
           <h1 className="text-display font-impact font-black uppercase text-primary-500 leading-none mb-4 tracking-tight text-center">
             DATABASE SEEDER
           </h1>
           
-          <p className="text-large font-impact font-black uppercase text-primary-700 leading-none tracking-tight text-center mb-8">
+          <p className="text-large font-impact font-black uppercase text-primary-700 dark:text-primary-400 leading-none tracking-tight text-center mb-8">
             SEED YOUR INDEXEDDB WITH SAMPLE DATA
           </p>
 
           <div className="space-y-6">
-            <div className="bg-gray-50 rounded-lg p-6">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6">
               <h2 className="text-heading-sm font-impact font-black uppercase text-primary-500 leading-none tracking-tight mb-4">
                 WHAT WILL BE CREATED:
               </h2>
               <ul className="space-y-2">
-                <li className="text-medium font-impact font-black uppercase text-primary-700 leading-none tracking-tight">
+                <li className="text-medium font-impact font-black uppercase text-primary-700 dark:text-primary-400 leading-none tracking-tight">
                   • 3 COMPANIES
                 </li>
-                <li className="text-medium font-impact font-black uppercase text-primary-700 leading-none tracking-tight">
+                <li className="text-medium font-impact font-black uppercase text-primary-700 dark:text-primary-400 leading-none tracking-tight">
                   • 55 USERS (5 EMPLOYERS + 50 CANDIDATES)
                 </li>
-                <li className="text-medium font-impact font-black uppercase text-primary-700 leading-none tracking-tight">
+                <li className="text-medium font-impact font-black uppercase text-primary-700 dark:text-primary-400 leading-none tracking-tight">
                   • 25 JOBS (MIXED ACTIVE/ARCHIVED)
                 </li>
                 <li className="text-medium font-impact font-black uppercase text-primary-700 leading-none tracking-tight">

@@ -2,7 +2,7 @@ import React from 'react';
 
 const ServiceImagesSection = () => {
   return (
-    <section className="bg-white pb-12 lg:pb-24 overflow-hidden">
+    <section className="bg-white dark:bg-black pb-12 lg:pb-24 overflow-hidden transition-colors duration-200">
       <div className="px-4 sm:px-8 lg:px-24">
         <div className="max-w-screen-xl mx-auto">
           <div className="flex flex-col lg:flex-row gap-6 lg:gap-6">

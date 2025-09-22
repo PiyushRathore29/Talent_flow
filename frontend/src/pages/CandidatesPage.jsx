@@ -444,9 +444,9 @@ const CandidatesPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-black transition-colors duration-200">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <div className="bg-white dark:bg-black shadow-sm border-b dark:border-gray-800 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
@@ -507,47 +507,47 @@ const CandidatesPage = () => {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-              <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="bg-white dark:bg-black rounded-lg shadow-sm border dark:border-gray-800 p-6 transition-colors duration-200">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Total Candidates</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">{allCandidates.length}</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Candidates</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{allCandidates.length}</p>
                   </div>
-                  <div className="p-3 bg-blue-100 rounded-lg">
-                    <Users className="w-5 h-5 text-blue-600" />
+                  <div className="p-3 bg-blue-100 dark:bg-blue-900/50 rounded-lg transition-colors duration-200">
+                    <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="bg-white dark:bg-black rounded-lg shadow-sm border dark:border-gray-800 p-6 transition-colors duration-200">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Active Pipeline</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Active Pipeline</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
                       {allCandidates.filter(c => !['hired', 'rejected'].includes(c.stage)).length}
                     </p>
                   </div>
-                  <div className="p-3 bg-yellow-100 rounded-lg">
-                    <TrendingUp className="w-5 h-5 text-yellow-600" />
+                  <div className="p-3 bg-yellow-100 dark:bg-yellow-900/50 rounded-lg transition-colors duration-200">
+                    <TrendingUp className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="bg-white dark:bg-black rounded-lg shadow-sm border dark:border-gray-800 p-6 transition-colors duration-200">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Hired</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Hired</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
                       {allCandidates.filter(c => c.stage === 'hired').length}
                     </p>
                   </div>
-                  <div className="p-3 bg-green-100 rounded-lg">
-                    <Target className="w-5 h-5 text-green-600" />
+                  <div className="p-3 bg-green-100 dark:bg-green-900/50 rounded-lg transition-colors duration-200">
+                    <Target className="w-5 h-5 text-green-600 dark:text-green-400" />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="bg-white dark:bg-black rounded-lg shadow-sm border dark:border-gray-800 p-6 transition-colors duration-200">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Conversion Rate</p>
@@ -716,8 +716,8 @@ const DroppableColumn = ({ stage, candidatesByStage, jobs, onStageChange, stages
   return (
     <div 
       ref={setNodeRef}
-      className={`bg-gray-100 rounded-lg p-4 transition-colors min-h-[400px] flex flex-col ${
-        isOver ? 'bg-gray-200 ring-2 ring-primary-300' : ''
+      className={`bg-gray-100 dark:bg-gray-900 rounded-lg p-4 transition-colors duration-200 min-h-[400px] flex flex-col ${
+        isOver ? 'bg-gray-200 dark:bg-gray-800 ring-2 ring-primary-300 dark:ring-primary-600' : ''
       }`}
     >
       <div className="flex items-center mb-4">
@@ -873,8 +873,8 @@ const CandidateCard = ({ candidate, stages, jobs, onStageChange, isDraggable = f
   const candidateJob = jobs.find(job => job.id === candidate.jobId);
   
   return (
-    <div className={`bg-white rounded-lg p-3 shadow-sm border transition-shadow relative ${
-      isDragOverlay ? 'shadow-lg rotate-3' : 'hover:shadow-md'
+    <div className={`bg-white dark:bg-black rounded-lg p-3 shadow-sm border dark:border-gray-800 transition-all duration-200 relative ${
+      isDragOverlay ? 'shadow-lg rotate-3' : 'hover:shadow-md dark:hover:shadow-lg'
     }`}>
       {/* Drag Handle - only visible when draggable */}
       {isDraggable && (
@@ -892,19 +892,19 @@ const CandidateCard = ({ candidate, stages, jobs, onStageChange, isDraggable = f
       <div className="flex items-center justify-between mb-2">
         <Link
           to={`/candidates/${candidate.id}`}
-          className="font-medium text-gray-900 hover:text-blue-600 transition-colors text-sm truncate pr-2 flex-1"
+          className="font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-sm truncate pr-2 flex-1"
           title={candidate.name}
         >
           {candidate.name}
         </Link>
       </div>
       
-      <div className="text-xs text-gray-500 mb-2 truncate" title={candidate.email}>
+      <div className="text-xs text-gray-500 dark:text-gray-300 mb-2 truncate" title={candidate.email}>
         {candidate.email}
       </div>
       
       {candidateJob && (
-        <div className="text-xs text-blue-600 font-medium mb-3 truncate" title={candidateJob.title}>
+        <div className="text-xs text-blue-600 dark:text-blue-300 font-medium mb-3 truncate" title={candidateJob.title}>
           {candidateJob.title}
         </div>
       )}

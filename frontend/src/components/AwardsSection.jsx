@@ -132,25 +132,25 @@ const AwardsSection = () => {
   ];
 
   return (
-    <section className="bg-white py-12 lg:py-24 overflow-hidden">
+    <section className="bg-white dark:bg-black py-12 lg:py-24 overflow-hidden transition-colors duration-200">
       <div className="px-4 sm:px-8 lg:px-24">
         <div className="max-w-screen-xl mx-auto">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-12 lg:mb-24 gap-4">
             <div className="flex items-center gap-8 lg:gap-24">
-              <p className="text-medium font-times italic text-primary-500/60">
+              <p className="text-medium font-times italic text-primary-500/60 dark:text-gray-400 transition-colors duration-200">
                 (What we achieved)
               </p>
-              <p className="text-medium font-times italic text-primary-500/60">
+              <p className="text-medium font-times italic text-primary-500/60 dark:text-gray-400 transition-colors duration-200">
                 (02)
               </p>
             </div>
           </div>
           
           <div className="mb-12 lg:mb-24">
-            <h2 className="font-impact font-black uppercase text-primary-500 leading-none mb-4 lg:mb-8 text-hero">
+            <h2 className="font-impact font-black uppercase text-primary-500 dark:text-white leading-none mb-4 lg:mb-8 text-hero transition-colors duration-200">
               OUR IMPACT
             </h2>
-            <p className="text-heading font-inter font-semibold text-primary-500 leading-tight max-w-2xl">
+            <p className="text-heading font-inter font-semibold text-primary-500 dark:text-gray-300 leading-tight max-w-2xl transition-colors duration-200">
               We're proud of the connections we've built and the careers we've shaped.
             </p>
           </div>
@@ -172,9 +172,9 @@ const AwardsSection = () => {
             </div>
           </div>
 
-          <div className="max-w-6xl mx-auto bg-primary-50 p-8 lg:p-24 flex flex-col lg:flex-row gap-16 lg:gap-32">
+          <div className="max-w-6xl mx-auto bg-primary-50 dark:bg-gray-900 p-8 lg:p-24 flex flex-col lg:flex-row gap-16 lg:gap-32 transition-colors duration-200">
             <div className="flex-1">
-              <h3 className="font-impact font-black uppercase text-primary-500 leading-tight mb-6 lg:mb-8 text-display-sm">
+              <h3 className="font-impact font-black uppercase text-primary-500 dark:text-white leading-tight mb-6 lg:mb-8 text-display-sm transition-colors duration-200">
                 COMPANY<br />ACHIEVEMENTS
               </h3>
               
@@ -182,15 +182,15 @@ const AwardsSection = () => {
                 {companyAchievements.map((award, index) => (
                   <div key={index}>
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 lg:py-6 gap-2">
-                      <span className="text-large font-inter font-semibold text-primary-500 tracking-tighter">
+                      <span className="text-large font-inter font-semibold text-primary-500 dark:text-white tracking-tighter transition-colors duration-200">
                         {award.name}
                       </span>
-                      <span className="text-medium font-times italic text-primary-500/60">
+                      <span className="text-medium font-times italic text-primary-500/60 dark:text-gray-400 transition-colors duration-200">
                         {award.year}
                       </span>
                     </div>
                     {index < companyAchievements.length - 1 && (
-                      <div className="w-full h-px bg-primary-200" />
+                      <div className="w-full h-px bg-primary-200 dark:bg-gray-700" />
                     )}
                   </div>
                 ))}
@@ -198,7 +198,7 @@ const AwardsSection = () => {
             </div>
 
             <div className="flex-1">
-              <h3 className="font-impact font-black uppercase text-primary-500 leading-tight mb-6 lg:mb-8 text-display-sm">
+              <h3 className="font-impact font-black uppercase text-primary-500 dark:text-white leading-tight mb-6 lg:mb-8 text-display-sm transition-colors duration-200">
                 PLATFORM<br />RECOGNITION
               </h3>
               
@@ -206,15 +206,15 @@ const AwardsSection = () => {
                 {platformRecognition.map((award, index) => (
                   <div key={index}>
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 lg:py-6 gap-2">
-                      <span className="text-large font-inter font-semibold text-primary-500 tracking-tighter">
+                      <span className="text-large font-inter font-semibold text-primary-500 dark:text-white tracking-tighter transition-colors duration-200">
                         {award.name}
                       </span>
-                      <span className="text-medium font-times italic text-primary-500/60">
+                      <span className="text-medium font-times italic text-primary-500/60 dark:text-gray-400 transition-colors duration-200">
                         {award.year}
                       </span>
                     </div>
                     {index < platformRecognition.length - 1 && (
-                      <div className="w-full h-px bg-primary-200" />
+                      <div className="w-full h-px bg-primary-200 dark:bg-gray-700" />
                     )}
                   </div>
                 ))}
