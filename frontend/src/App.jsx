@@ -12,6 +12,7 @@ import CompaniesPage from './pages/CompaniesPage';
 import ProjectsPage from './pages/ProjectsPage';
 import SignUpPage from './pages/SignUpPage';
 import SignInPage from './pages/SignInPage';
+import DocsPage from './pages/DocsPage';
 
 // Dashboard and main pages
 import DashboardPage from './pages/DashboardPage';
@@ -79,7 +80,7 @@ function AppRoutes() {
             <Route path="/features" element={<ServicesPage />} />
             <Route path="/companies" element={<CompaniesPage />} />
             <Route path="/projects" element={<ProjectsPage />} />
-            <Route path="/about" element={<AboutPage />} />
+            <Route path="/about" element={<DocsPage />} />
             
             {/* Auth routes */}
             <Route path="/signup" element={<PublicRoute><SignUpPage /></PublicRoute>} />

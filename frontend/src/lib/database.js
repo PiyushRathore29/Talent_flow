@@ -184,6 +184,39 @@ export const dbHelpers = {
     }
   },
 
+  async updateJobOrder(jobId, newOrder) {
+    console.log('🗄️ Database: Updating job order - ID:', jobId, 'New Order:', newOrder);
+    return await this.updateJob(jobId, { order: newOrder });
+  },
+
+  async reorderJobs(jobsWithNewOrders) {
+    console.log('🗄️ Database: Reordering jobs:', jobsWithNewOrders);
+    
+    try {
+      await db.transaction('rw', db.jobs, async () => {
+        for (const { id, order } of jobsWithNewOrders) {
+          await db.jobs.update(id, { order: order, updatedAt: new Date() });
+        }
+      });
+      
+      console.log('🗄️ Database: Jobs reordered successfully');
+      return true;
+    } catch (error) {
+      console.error('🗄️ Database: Failed to reorder jobs:', error);
+      throw error;
+    }
+  },
+
+  async getJobsOrderedByOrder() {
+    const jobs = await db.jobs.orderBy('order').toArray();
+    // Fill in missing order values if needed
+    const jobsWithOrder = jobs.map((job, index) => ({
+      ...job,
+      order: job.order || (index + 1)
+    }));
+    return jobsWithOrder;
+  },
+
   // Job Stages
   async createJobStage(stageData) {
     console.log('🗄️ Database: Attempting to create job stage:', stageData);
@@ -277,6 +310,10 @@ export const dbHelpers = {
     }
     
     return candidateRecords;
+  },
+
+  async getAllCandidates() {
+    return await db.candidates.toArray();
   },
 
   async getCandidatesByJob(jobId) {

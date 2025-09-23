@@ -27,7 +27,7 @@ const Footer = () => {
                     Jobs
                   </a>
                   <a href="/about" className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity">
-                    About Us
+                    Docs
                   </a>
                   <a href="#contact" className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity">
                     Contact

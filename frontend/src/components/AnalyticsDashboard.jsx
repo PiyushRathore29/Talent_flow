@@ -34,23 +34,8 @@ const AnalyticsDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch jobs data - jobs API returns { success: true, data: [...], pagination: {...} }
-      const jobsResponse = await fetch('/api/jobs?pageSize=1000');
-      const jobsData = await jobsResponse.json();
-      const jobs = jobsData.data || [];
-
-      // Fetch candidates data - candidates API returns { data: [...], pagination: {...} }
-      const candidatesResponse = await fetch('/api/candidates?pageSize=1000');
-      const candidatesData = await candidatesResponse.json();
-      const candidates = candidatesData.data || [];
-
-      // Fetch assessments data - assessments API returns { success: true, data: [...] }
-      const assessmentsResponse = await fetch('/api/assessments');
-      const assessmentsData = await assessmentsResponse.json();
-      const assessments = assessmentsData.success ? assessmentsData.data : [];
-
-      // Fetch candidates data directly from IndexedDB
-      const candidatesFromDB = await db.candidates.toArray();
+      // Fetch all data directly from IndexedDB
+      const candidatesFromDB = await dbHelpers.getAllCandidates();
       const jobsFromDB = await dbHelpers.getAllJobs();
       const assessmentsFromDB = await db.assessments.toArray();
 
@@ -78,14 +63,14 @@ const AnalyticsDashboard = () => {
         }
       ];
 
-      // Calculate pipeline data (keeping for compatibility)
+      // Calculate pipeline data using IndexedDB candidates
       const pipelineData = [
-        { stage: 'Applied', count: candidates.filter(c => c.stage === 'applied').length },
-        { stage: 'Screening', count: candidates.filter(c => c.stage === 'screen').length },
-        { stage: 'Interview', count: candidates.filter(c => c.stage === 'interview').length },
-        { stage: 'Final', count: candidates.filter(c => c.stage === 'final').length },
-        { stage: 'Offer', count: candidates.filter(c => c.stage === 'offer').length },
-        { stage: 'Hired', count: candidates.filter(c => c.stage === 'hired').length }
+        { stage: 'Applied', count: candidatesFromDB.filter(c => c.stage === 'applied').length },
+        { stage: 'Screening', count: candidatesFromDB.filter(c => c.stage === 'screen').length },
+        { stage: 'Technical', count: candidatesFromDB.filter(c => c.stage === 'tech').length },
+        { stage: 'Offer', count: candidatesFromDB.filter(c => c.stage === 'offer').length },
+        { stage: 'Hired', count: candidatesFromDB.filter(c => c.stage === 'hired').length },
+        { stage: 'Rejected', count: candidatesFromDB.filter(c => c.stage === 'rejected').length }
       ];
 
       // Calculate job application trends (mock data for now)
@@ -100,9 +85,9 @@ const AnalyticsDashboard = () => {
 
       // Calculate assessment completion rates
       const completionData = [
-        { name: 'Completed', value: assessments.filter(a => a.status === 'completed').length, color: '#10b981' },
-        { name: 'In Progress', value: assessments.filter(a => a.status === 'in-progress').length, color: '#f59e0b' },
-        { name: 'Not Started', value: assessments.filter(a => a.status === 'not-started').length, color: '#ef4444' }
+        { name: 'Completed', value: assessmentsFromDB.filter(a => a.status === 'completed').length, color: '#10b981' },
+        { name: 'In Progress', value: assessmentsFromDB.filter(a => a.status === 'in-progress').length, color: '#f59e0b' },
+        { name: 'Not Started', value: assessmentsFromDB.filter(a => a.status === 'not-started').length, color: '#ef4444' }
       ];
 
       // Fetch recent activity from timeline
@@ -123,10 +108,10 @@ const AnalyticsDashboard = () => {
       }
 
       const finalData = {
-        totalJobs: jobs.length,
-        totalCandidates: candidates.length,
-        totalAssessments: assessments.length,
-        activeApplications: candidates.filter(c => !['hired', 'rejected'].includes(c.stage)).length,
+        totalJobs: jobsFromDB.length,
+        totalCandidates: candidatesFromDB.length,
+        totalAssessments: assessmentsFromDB.length,
+        activeApplications: candidatesFromDB.filter(c => !['hired', 'rejected'].includes(c.stage)).length,
         recentActivity,
         mainMetrics: mainMetricsData,
         candidatePipeline: pipelineData,
@@ -135,11 +120,11 @@ const AnalyticsDashboard = () => {
       };
       
       // Debug: Log the final counts
-      console.log('📊 Dashboard data:', {
-        jobs: jobs.length,
-        candidates: candidates.length,
-        assessments: assessments.length,
-        activeApplications: candidates.filter(c => !['hired', 'rejected'].includes(c.stage)).length
+      console.log('📊 Dashboard data from IndexedDB:', {
+        jobs: jobsFromDB.length,
+        candidates: candidatesFromDB.length,
+        assessments: assessmentsFromDB.length,
+        activeApplications: candidatesFromDB.filter(c => !['hired', 'rejected'].includes(c.stage)).length
       });
       
       setDashboardData(finalData);

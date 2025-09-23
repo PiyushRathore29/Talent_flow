@@ -1,17 +1,22 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { dbHelpers } from '../lib/database';
+import { useToast } from '../components/Toast';
 
 const JobsPage = () => {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
+  // Toast hook
+  const { showSuccess, showError, showWarning, ToastContainer } = useToast();
+  
   // Pagination and filtering state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(12);
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState(''); // This will trigger the actual search
   const [statusFilter, setStatusFilter] = useState('');
   const [sortBy, setSortBy] = useState('title');
   
@@ -23,14 +28,20 @@ const JobsPage = () => {
   const [draggedItem, setDraggedItem] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
 
-  // Debounce search input to avoid excessive API calls
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-    }, 500); // Wait 500ms after user stops typing
+  // Handle search on Enter key press
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      setAppliedSearch(search);
+      setCurrentPage(1); // Reset to first page when searching
+    }
+  };
 
-    return () => clearTimeout(timer);
-  }, [search]);
+  // Handle search clear
+  const handleClearSearch = () => {
+    setSearch('');
+    setAppliedSearch('');
+    setCurrentPage(1);
+  };
 
   // Fetch jobs using MSW API
   const fetchJobs = useCallback(async () => {
@@ -39,7 +50,7 @@ const JobsPage = () => {
       const params = new URLSearchParams({
         page: currentPage.toString(),
         pageSize: pageSize.toString(),
-        ...(debouncedSearch && { search: debouncedSearch }),
+        ...(appliedSearch && { search: appliedSearch }),
         ...(statusFilter && { status: statusFilter }),
         ...(sortBy && { sort: sortBy })
       });
@@ -59,7 +70,7 @@ const JobsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, debouncedSearch, statusFilter, sortBy, pageSize]);
+  }, [currentPage, appliedSearch, statusFilter, sortBy, pageSize]);
 
   // Load jobs on component mount and when filters change
   useEffect(() => {
@@ -69,15 +80,24 @@ const JobsPage = () => {
   // Fetch all jobs for reorder mode
   const fetchAllJobs = useCallback(async () => {
     try {
-      const response = await fetch('/api/jobs?pageSize=1000&sort=order'); // Get all jobs sorted by order
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      setAllJobs(data.data || []);
+      // Use IndexedDB directly for reorder mode to get consistent ordering
+      const jobs = await dbHelpers.getJobsOrderedByOrder();
+      console.log('🗄️ Fetched jobs for reorder mode:', jobs);
+      setAllJobs(jobs);
     } catch (err) {
-      console.error('Failed to fetch all jobs:', err);
+      console.error('Failed to fetch all jobs from IndexedDB:', err);
+      // Fallback to API if IndexedDB fails
+      try {
+        const response = await fetch('/api/jobs?pageSize=1000&sort=order');
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        setAllJobs(data.data || []);
+      } catch (apiErr) {
+        console.error('API fallback also failed:', apiErr);
+      }
     }
   }, []);
 
@@ -103,9 +123,12 @@ const JobsPage = () => {
 
       await fetchJobs(); // Refresh list
       setShowCreateModal(false);
+      
+      // Show success toast
+      showSuccess(`Job "${jobData.title}" created successfully! 🎉`, 5000);
     } catch (err) {
       console.error('Error creating job:', err);
-      alert('Failed to create job: ' + err.message);
+      showError('Failed to create job: ' + err.message, 6000);
     }
   };
 
@@ -124,106 +147,155 @@ const JobsPage = () => {
 
       await fetchJobs(); // Refresh list
       setEditingJob(null);
+      
+      // Show success toast
+      showSuccess(`Job "${updates.title || 'Job'}" updated successfully! ✅`, 4000);
     } catch (err) {
       console.error('Error updating job:', err);
-      alert('Failed to update job: ' + err.message);
+      showError('Failed to update job: ' + err.message, 6000);
     }
   };
 
   // Handle job reordering with drag and drop
   const handleReorderJobs = async (newJobsOrder) => {
     try {
+      console.log('🔄 Starting job reorder:', newJobsOrder);
+      
       // Update local state immediately for smooth UX
       setAllJobs(newJobsOrder);
       
-      // Save to database - update each job's order
-      const updatePromises = newJobsOrder.map((job, index) => 
-        fetch(`/api/jobs/${job.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ order: index + 1 })
-        })
-      );
-
-      await Promise.all(updatePromises);
+      // Prepare jobs with new order values
+      const jobsWithNewOrders = newJobsOrder.map((job, index) => ({
+        id: job.id,
+        order: index + 1
+      }));
       
-      // Try to save to IndexedDB for offline persistence (non-blocking)
+      console.log('📋 Jobs with new orders:', jobsWithNewOrders);
+      
+      // Save to IndexedDB directly
+      await dbHelpers.reorderJobs(jobsWithNewOrders);
+      console.log('✅ Jobs reordered in IndexedDB successfully');
+      
+      // Show success toast
+      showSuccess(`Jobs reordered successfully! ✨ New order saved.`, 4000);
+      
+      // Also try to update via API for external sync (non-blocking)
       try {
-        await saveJobsOrderToIndexedDB(newJobsOrder);
-      } catch (indexedDBError) {
-        console.warn('IndexedDB save failed (non-critical):', indexedDBError);
-        // Continue without IndexedDB - not a critical failure
+        const updatePromises = newJobsOrder.map((job, index) => {
+          const newOrder = index + 1;
+          const fromOrder = job.order || (allJobs.findIndex(j => j.id === job.id) + 1);
+          
+          return fetch(`/api/jobs/${job.id}/reorder`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              fromOrder: fromOrder,
+              toOrder: newOrder 
+            })
+          });
+        });
+
+        await Promise.all(updatePromises);
+        console.log('✅ Jobs also updated via API');
+      } catch (apiError) {
+        console.warn('⚠️ API update failed (non-critical):', apiError);
+        showWarning('Jobs reordered locally, but sync to server failed. Changes may not persist.', 6000);
       }
       
       // Refresh the main jobs list
       await fetchJobs();
     } catch (err) {
-      console.error('Error reordering jobs:', err);
-      alert('Failed to save job order: ' + err.message);
+      console.error('❌ Error reordering jobs:', err);
+      showError('Failed to save job order: ' + err.message, 6000);
       // Reload to revert changes on error
       fetchAllJobs();
     }
   };
 
-  // IndexedDB operations for job order persistence
-  const saveJobsOrderToIndexedDB = async (jobsOrder) => {
-    return new Promise((resolve, reject) => {
-      // Use localStorage as fallback since IndexedDB can be problematic
-      try {
-        const jobsOrderData = jobsOrder.map((job, index) => ({
-          id: job.id,
-          order: index + 1,
-          title: job.title,
-          timestamp: Date.now()
-        }));
-        
-        localStorage.setItem('talentflow_jobs_order', JSON.stringify(jobsOrderData));
-        resolve();
-      } catch (localStorageError) {
-        // Try IndexedDB as backup
-        const request = indexedDB.open('TalentFlowDB');
-        
-        request.onerror = () => reject(request.error);
-        
-        request.onupgradeneeded = (event) => {
-          const db = event.target.result;
-          if (!db.objectStoreNames.contains('jobsOrder')) {
-            db.createObjectStore('jobsOrder', { keyPath: 'id' });
-          }
-        };
-        
-        request.onsuccess = (event) => {
-          const db = event.target.result;
-          
-          try {
-            const transaction = db.transaction(['jobsOrder'], 'readwrite');
-            const store = transaction.objectStore('jobsOrder');
-            
-            // Clear existing order and save new one
-            store.clear();
-            jobsOrder.forEach((job, index) => {
-              store.add({ id: job.id, order: index + 1, title: job.title });
-            });
-            
-            transaction.oncomplete = () => {
-              db.close();
-              resolve();
-            };
-            transaction.onerror = () => {
-              db.close();
-              reject(transaction.error);
-            };
-          } catch (dbError) {
-            db.close();
-            reject(dbError);
-          }
-        };
-      }
-    });
+  // Auto-scroll handling with ref to avoid state issues
+  const autoScrollIntervalRef = useRef(null);
+  const isDraggingRef = useRef(false);
+
+  // Auto-scroll function
+  const handleAutoScroll = (clientY) => {
+    // Only auto-scroll if we're actively dragging
+    if (!isDraggingRef.current) return;
+    
+    const scrollZone = 100; // Increased pixels from edge to trigger scroll
+    const scrollSpeed = 12; // Increased pixels per scroll
+    const viewportHeight = window.innerHeight;
+    
+    // Clear existing interval
+    if (autoScrollIntervalRef.current) {
+      clearInterval(autoScrollIntervalRef.current);
+      autoScrollIntervalRef.current = null;
+    }
+    
+    // Check if we need to scroll up
+    if (clientY < scrollZone) {
+      autoScrollIntervalRef.current = setInterval(() => {
+        if (!isDraggingRef.current) {
+          clearInterval(autoScrollIntervalRef.current);
+          autoScrollIntervalRef.current = null;
+          return;
+        }
+        window.scrollBy(0, -scrollSpeed);
+      }, 16); // Faster for smoother scroll
+    }
+    // Check if we need to scroll down
+    else if (clientY > viewportHeight - scrollZone) {
+      autoScrollIntervalRef.current = setInterval(() => {
+        if (!isDraggingRef.current) {
+          clearInterval(autoScrollIntervalRef.current);
+          autoScrollIntervalRef.current = null;
+          return;
+        }
+        window.scrollBy(0, scrollSpeed);
+      }, 16); // Faster for smoother scroll
+    }
   };
+
+  // Stop auto-scroll
+  const stopAutoScroll = () => {
+    isDraggingRef.current = false;
+    if (autoScrollIntervalRef.current) {
+      clearInterval(autoScrollIntervalRef.current);
+      autoScrollIntervalRef.current = null;
+    }
+  };
+
+  // Global mouse event handlers for better drag tracking
+  useEffect(() => {
+    const handleGlobalMouseMove = (e) => {
+      if (isDraggingRef.current && isReorderMode) {
+        handleAutoScroll(e.clientY);
+      }
+    };
+
+    const handleGlobalMouseUp = () => {
+      if (isDraggingRef.current) {
+        stopAutoScroll();
+      }
+    };
+
+    // Add global listeners
+    document.addEventListener('mousemove', handleGlobalMouseMove);
+    document.addEventListener('mouseup', handleGlobalMouseUp);
+    
+    // Cleanup
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMouseMove);
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+      if (autoScrollIntervalRef.current) {
+        clearInterval(autoScrollIntervalRef.current);
+        autoScrollIntervalRef.current = null;
+      }
+    };
+  }, [isReorderMode]);
 
   // Drag and drop handlers
   const handleDragStart = (e, job, index) => {
+    isDraggingRef.current = true;
     setDraggedItem({ job, index });
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', JSON.stringify({ jobId: job.id, sourceIndex: index }));
@@ -233,6 +305,11 @@ const JobsPage = () => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     setDragOverIndex(targetIndex);
+    
+    // Only handle auto-scroll if we're actively dragging
+    if (isDraggingRef.current) {
+      handleAutoScroll(e.clientY);
+    }
   };
 
   const handleDragEnter = (e, targetIndex) => {
@@ -244,6 +321,7 @@ const JobsPage = () => {
     // Only clear if we're leaving the entire container
     if (!e.currentTarget.contains(e.relatedTarget)) {
       setDragOverIndex(null);
+      // Don't stop auto-scroll here as we might still be dragging
     }
   };
 
@@ -277,12 +355,14 @@ const JobsPage = () => {
     } finally {
       setDraggedItem(null);
       setDragOverIndex(null);
+      stopAutoScroll();
     }
   };
 
   const handleDragEnd = (e) => {
     setDraggedItem(null);
     setDragOverIndex(null);
+    stopAutoScroll();
   };
 
   if (loading) {
@@ -328,12 +408,13 @@ const JobsPage = () => {
         <div className="bg-white dark:bg-black rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 mb-6 transition-colors duration-200">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 leading-relaxed tracking-wide mb-2">Search</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 leading-relaxed tracking-wide mb-2">Search (Press Enter)</label>
               <input
                 type="text"
-                placeholder="Search jobs..."
+                placeholder="Search jobs... (Press Enter to search)"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
                 disabled={isReorderMode}
                 className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:border-gray-400 dark:hover:border-gray-500 placeholder-gray-400 dark:placeholder-gray-500 transition-all duration-200 tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
               />
@@ -380,11 +461,9 @@ const JobsPage = () => {
             <div className="flex items-end">
               <button
                 onClick={() => {
-                  setSearch('');
-                  setDebouncedSearch('');
+                  handleClearSearch();
                   setStatusFilter('');
                   setSortBy('title');
-                  setCurrentPage(1);
                 }}
                 disabled={isReorderMode}
                 className="px-4 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white transition-all duration-200 tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
@@ -651,6 +730,9 @@ const JobsPage = () => {
           }}
         />
       )}
+      
+      {/* Toast Container */}
+      <ToastContainer />
     </div>
   );
 };

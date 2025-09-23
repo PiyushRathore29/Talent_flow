@@ -35,7 +35,7 @@ const Header = () => {
             Features
           </Link>
           <Link to="/about" className={getLinkClass('/about')}>
-            About Us
+            Docs
           </Link>
         </nav>
 
