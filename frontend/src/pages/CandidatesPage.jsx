@@ -29,6 +29,7 @@ import { CSS } from '@dnd-kit/utilities';
 import AuthenticatedHeader from '../components/AuthenticatedHeader';
 import Footer from '../components/Footer';
 import CandidatesBoard from '../components/CandidatesBoard';
+import { useToast } from '../components/Toast';
 
 // Create Candidate Button Component
 const CreateCandidateButton = ({ onCreate, jobs, defaultJobId }) => {
@@ -173,6 +174,9 @@ const CandidatesPage = () => {
   const [searchParams] = useSearchParams();
   const jobId = searchParams.get('jobId');
   
+  // Toast system
+  const { showSuccess, showError, ToastContainer } = useToast();
+  
   // State variables
   const [candidates, setCandidates] = useState([]);
   const [jobs, setJobs] = useState([]);
@@ -240,6 +244,13 @@ const CandidatesPage = () => {
       });
       
       if (response.ok) {
+        // Find candidate name and stage name for toast
+        const candidate = candidates.find(c => c.id === candidateId) || allCandidates.find(c => c.id === candidateId);
+        const stageName = stages.find(s => s.id === newStage)?.name || newStage;
+        
+        // Show success toast
+        showSuccess(`${candidate?.name || 'Candidate'} moved to ${stageName}`);
+        
         // Update local state
         setCandidates(prev => 
           prev.map(candidate => 
@@ -248,9 +259,19 @@ const CandidatesPage = () => {
               : candidate
           )
         );
+        setAllCandidates(prev => 
+          prev.map(candidate => 
+            candidate.id === candidateId 
+              ? { ...candidate, stage: newStage }
+              : candidate
+          )
+        );
+      } else {
+        showError(`Failed to update candidate stage`);
       }
     } catch (error) {
       console.error('Error updating candidate stage:', error);
+      showError(`Error updating candidate stage`);
     }
     
     setActiveId(null);
@@ -264,6 +285,7 @@ const CandidatesPage = () => {
 
   // Utility functions
   const handleStageChange = async (candidateId, newStage) => {
+    console.log(`🔄 Stage change requested: Candidate ${candidateId} -> ${newStage}`);
     try {
       const response = await fetch(`/api/candidates/${candidateId}`, {
         method: 'PUT',
@@ -271,7 +293,18 @@ const CandidatesPage = () => {
         body: JSON.stringify({ stage: newStage })
       });
       
+      console.log(`📡 API Response status: ${response.status}`);
+      
       if (response.ok) {
+        console.log(`✅ Successfully updated candidate ${candidateId} to stage ${newStage}`);
+        
+        // Find candidate name for toast
+        const candidate = candidates.find(c => c.id === candidateId) || allCandidates.find(c => c.id === candidateId);
+        const stageName = stages.find(s => s.id === newStage)?.name || newStage;
+        
+        // Show success toast
+        showSuccess(`${candidate?.name || 'Candidate'} moved to ${stageName}`);
+        
         // Update both candidates arrays
         setCandidates(prev => 
           prev.map(candidate => 
@@ -287,9 +320,13 @@ const CandidatesPage = () => {
               : candidate
           )
         );
+      } else {
+        console.error(`❌ Failed to update candidate stage: ${response.statusText}`);
+        showError(`Failed to update candidate stage`);
       }
     } catch (error) {
-      console.error('Error updating candidate stage:', error);
+      console.error('❌ Error updating candidate stage:', error);
+      showError(`Error updating candidate stage`);
     }
   };
 
@@ -303,11 +340,18 @@ const CandidatesPage = () => {
       
       if (response.ok) {
         const newCandidate = await response.json();
+        
+        // Show success toast
+        showSuccess(`New candidate ${newCandidate.name} created`);
+        
         setCandidates(prev => [...prev, newCandidate]);
         setAllCandidates(prev => [...prev, newCandidate]);
+      } else {
+        showError(`Failed to create candidate`);
       }
     } catch (error) {
       console.error('Error creating candidate:', error);
+      showError(`Error creating candidate`);
     }
   };
 
@@ -485,6 +529,9 @@ const CandidatesPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-black transition-colors duration-200">
+      {/* Toast Container */}
+      <ToastContainer />
+      
       {/* Header */}
       <div className="bg-white dark:bg-black shadow-sm border-b dark:border-gray-800 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -925,49 +972,95 @@ const DraggableCandidateCard = ({ candidate, stages, jobs, onStageChange }) => {
 const CandidateCard = ({ candidate, stages, jobs, onStageChange, isDraggable = false, isDragOverlay = false, dragListeners = {} }) => {
   const candidateJob = jobs.find(job => job.id === candidate.jobId);
   
+  // Get current stage index and next stage
+  const currentStageIndex = stages.findIndex(stage => stage.id === candidate.stage);
+  const nextStage = currentStageIndex >= 0 && currentStageIndex < stages.length - 1 ? stages[currentStageIndex + 1] : null;
+  
+  // Show forward button for all stages except rejected (which is the final stage)
+  const showForwardButton = nextStage && candidate.stage !== 'rejected';
+  
+  const handleMoveForward = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (nextStage) {
+      console.log(`Moving candidate ${candidate.name} from ${candidate.stage} to ${nextStage.id}`);
+      await onStageChange(candidate.id, nextStage.id);
+    }
+  };
+  
+  // Get current stage info for styling
+  const currentStageInfo = stages.find(s => s.id === candidate.stage);
+  
   return (
-    <div className={`bg-white dark:bg-black rounded-lg p-3 shadow-sm border dark:border-gray-800 transition-all duration-200 relative ${
+    <div className={`bg-white dark:bg-black rounded-lg p-4 shadow-sm border dark:border-gray-800 transition-all duration-200 relative ${
       isDragOverlay ? 'shadow-lg rotate-3' : 'hover:shadow-md dark:hover:shadow-lg'
     }`}>
-      {/* Drag Handle - only visible when draggable */}
-      {isDraggable && (
-        <div 
-          {...dragListeners}
-          className="absolute top-1 right-1 cursor-grab active:cursor-grabbing p-1 rounded hover:bg-gray-100 transition-colors"
-          title="Drag to move candidate"
-        >
-          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-          </svg>
-        </div>
-      )}
-      
-      <div className="flex items-center justify-between mb-2">
+      {/* Header with Name and Forward Button */}
+      <div className="flex items-center justify-between mb-3">
         <Link
           to={`/candidates/${candidate.id}`}
-          className="font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-sm truncate pr-2 flex-1"
+          className="font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-sm truncate flex-1 mr-2"
           title={candidate.name}
         >
           {candidate.name}
         </Link>
+        
+        {/* Move Forward Button - More Prominent */}
+        {showForwardButton && (
+          <button
+            onClick={handleMoveForward}
+            className="flex items-center justify-center w-8 h-8 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 hover:text-green-700 dark:hover:text-green-300 rounded-full transition-all duration-200 flex-shrink-0"
+            title={`Move to ${nextStage.name}`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        )}
       </div>
       
-      <div className="text-xs text-gray-500 dark:text-gray-300 mb-2 truncate" title={candidate.email}>
+      {/* Email */}
+      <div className="text-xs text-gray-500 dark:text-gray-400 mb-3 truncate" title={candidate.email}>
         {candidate.email}
       </div>
       
+      {/* Job Title */}
       {candidateJob && (
-        <div className="text-xs text-blue-600 dark:text-blue-300 font-medium mb-3 truncate" title={candidateJob.title}>
+        <div className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-3 truncate" title={candidateJob.title}>
           {candidateJob.title}
         </div>
       )}
       
-      <div className="flex justify-between items-center">
+      {/* Current Stage Badge */}
+      <div className="mb-3">
+        <span className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${
+          candidate.stage === 'applied' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
+          candidate.stage === 'screen' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
+          candidate.stage === 'tech' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' :
+          candidate.stage === 'offer' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' :
+          candidate.stage === 'hired' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+          'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+        }`}>
+          {currentStageInfo?.name || candidate.stage}
+        </span>
+      </div>
+      
+      {/* Next Stage Preview */}
+      {showForwardButton && (
+        <div className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+          <span className="font-medium">Next:</span> {nextStage.name}
+        </div>
+      )}
+      
+      {/* Bottom Actions */}
+      <div className="flex justify-between items-center mt-4">
+        {/* Stage Dropdown - only show in list view */}
         {!isDraggable && stages && (
           <select
             value={candidate.stage}
             onChange={(e) => onStageChange(candidate.id, e.target.value)}
-            className="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
             {stages.map(stage => (
               <option key={stage.id} value={stage.id}>{stage.name}</option>
@@ -975,17 +1068,18 @@ const CandidateCard = ({ candidate, stages, jobs, onStageChange, isDraggable = f
           </select>
         )}
         
-        <div className="flex space-x-1 ml-auto">
+        {/* Action Links */}
+        <div className="flex space-x-2 ml-auto">
           <Link
             to={`/candidates/${candidate.id}/timeline`}
-            className="text-xs text-blue-600 hover:text-blue-700 transition-colors whitespace-nowrap"
+            className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors whitespace-nowrap"
           >
             Timeline
           </Link>
           {candidateJob && (
             <Link
               to={`/jobs/${candidateJob.id}/flow`}
-              className="text-xs text-purple-600 hover:text-purple-700 transition-colors whitespace-nowrap"
+              className="text-xs text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors whitespace-nowrap"
             >
               Flow
             </Link>
