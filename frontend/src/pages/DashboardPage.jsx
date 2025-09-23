@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import Timeline, { TimelineStats } from '../components/Timeline';
+import { dbHelpers, clearAllData, initializeSampleData } from '../lib/database';
 
 const DashboardPage = () => {
   const { user } = useAuth();
@@ -10,7 +12,8 @@ const DashboardPage = () => {
     completedAssessments: 0,
     hiredThisMonth: 0
   });
-  const [recentActivity, setRecentActivity] = useState([]);
+  const [timelineEntries, setTimelineEntries] = useState([]);
+  const [timelineStats, setTimelineStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,14 +47,18 @@ const DashboardPage = () => {
           hiredThisMonth
         });
 
-        // Generate recent activity
-        const activity = [
-          { type: 'candidate', message: `${candidates.length} candidates in pipeline`, time: '2 hours ago' },
-          { type: 'job', message: `${jobs.filter(j => j.status === 'active').length} active job postings`, time: '4 hours ago' },
-          { type: 'assessment', message: `${assessments.length} assessments configured`, time: '6 hours ago' },
-          { type: 'hire', message: `${hiredThisMonth} hires this month`, time: '1 day ago' }
-        ];
-        setRecentActivity(activity);
+        // Fetch timeline entries and stats
+        try {
+          const timeline = await dbHelpers.getTimelineEntries(null, 20); // Get latest 20 entries
+          const timelineStatistics = await dbHelpers.getTimelineStats();
+          setTimelineEntries(timeline);
+          setTimelineStats(timelineStatistics);
+        } catch (timelineError) {
+          console.error('Failed to fetch timeline data:', timelineError);
+          // Set empty arrays so UI doesn't break
+          setTimelineEntries([]);
+          setTimelineStats({ today: 0, thisWeek: 0, thisMonth: 0, total: 0 });
+        }
 
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
@@ -63,6 +70,23 @@ const DashboardPage = () => {
     fetchDashboardData();
   }, []);
 
+  const handleResetData = async () => {
+    if (window.confirm('This will clear all data and add sample timeline entries. Continue?')) {
+      try {
+        setLoading(true);
+        await clearAllData();
+        await initializeSampleData();
+        // Refresh the page to reload data
+        window.location.reload();
+      } catch (error) {
+        console.error('Failed to reset data:', error);
+        alert('Failed to reset data. Check console for details.');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-black flex items-center justify-center">
@@ -72,10 +96,10 @@ const DashboardPage = () => {
   }
 
   return (
-    <div className="bg-white dark:bg-black overflow-hidden transition-colors duration-200">
+    <div className="min-h-screen bg-white dark:bg-black">
       {/* Hero Section */}
       <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-black">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
             <h1 className="text-hero font-impact font-black uppercase text-white leading-none mb-4 lg:mb-8 tracking-tight">
               TALENT
@@ -127,6 +151,19 @@ const DashboardPage = () => {
           />
         </div>
 
+        {/* Temporary Reset Button for Testing */}
+        <div className="mb-8 text-center">
+          <button
+            onClick={handleResetData}
+            className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-impact font-black uppercase leading-none tracking-tight transition-colors duration-200"
+          >
+            Reset Data & Add Sample Timeline
+          </button>
+          <p className="text-sm text-gray-500 mt-2">
+            This will clear all data and add sample candidates with timeline entries for testing
+          </p>
+        </div>
+
         {/* Main Navigation */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
           <NavigationCard
@@ -152,15 +189,30 @@ const DashboardPage = () => {
           />
         </div>
 
-        {/* Recent Activity */}
-        <div className="bg-gray-50 rounded-2xl p-8 mb-16">
-          <h2 className="text-heading font-impact font-black uppercase text-primary-500 leading-none mb-4 lg:mb-8 tracking-tight">
-            RECENT ACTIVITY
-          </h2>
-          <div className="space-y-4">
-            {recentActivity.map((activity, index) => (
-              <ActivityItem key={index} {...activity} />
-            ))}
+        {/* Recent Activity Timeline */}
+        <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl p-8 mb-16 transition-colors duration-200">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-heading font-impact font-black uppercase text-primary-500 dark:text-primary-400 leading-none tracking-tight">
+              RECENT ACTIVITY
+            </h2>
+            <Link
+              to="/candidates"
+              className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+            >
+              View All →
+            </Link>
+          </div>
+          
+          {/* Timeline Stats */}
+          {timelineStats && <TimelineStats stats={timelineStats} />}
+          
+          {/* Timeline */}
+          <div className="bg-white dark:bg-black rounded-lg p-6 border border-gray-200 dark:border-gray-700 transition-colors duration-200">
+            <Timeline 
+              entries={timelineEntries} 
+              showCandidate={true}
+              limit={10}
+            />
           </div>
         </div>
 
@@ -253,26 +305,6 @@ const NavigationCard = ({ title, description, link, icon, features }) => (
     </div>
   </Link>
 );
-
-// Activity Item Component
-const ActivityItem = ({ type, message, time }) => {
-  const iconMap = {
-    candidate: '👤',
-    job: '💼',
-    assessment: '📊',
-    hire: '🎉'
-  };
-
-  return (
-    <div className="flex items-center justify-between py-4 border-b border-gray-200 last:border-b-0">
-      <div className="flex items-center space-x-4">
-        <span className="text-heading">{iconMap[type]}</span>
-        <span className="text-medium font-impact font-black uppercase text-primary-500 leading-none tracking-tight">{message}</span>
-      </div>
-      <span className="text-small font-impact font-black uppercase text-primary-700 leading-none tracking-tight">{time}</span>
-    </div>
-  );
-};
 
 // Quick Action Button Component
 const QuickActionButton = ({ title, link, color }) => {

@@ -30,6 +30,7 @@ import AuthenticatedHeader from '../components/AuthenticatedHeader';
 import Footer from '../components/Footer';
 import CandidatesBoard from '../components/CandidatesBoard';
 import { useToast } from '../components/Toast';
+import { dbHelpers } from '../lib/database';
 
 // Create Candidate Button Component
 const CreateCandidateButton = ({ onCreate, jobs, defaultJobId }) => {
@@ -298,12 +299,24 @@ const CandidatesPage = () => {
       if (response.ok) {
         console.log(`✅ Successfully updated candidate ${candidateId} to stage ${newStage}`);
         
-        // Find candidate name for toast
+        // Find candidate and job info for toast and timeline
         const candidate = candidates.find(c => c.id === candidateId) || allCandidates.find(c => c.id === candidateId);
+        const job = jobs.find(j => j.id === candidate?.jobId);
         const stageName = stages.find(s => s.id === newStage)?.name || newStage;
+        const oldStageName = stages.find(s => s.id === candidate?.stage)?.name || candidate?.stage;
         
         // Show success toast
         showSuccess(`${candidate?.name || 'Candidate'} moved to ${stageName}`);
+        
+        // Log to timeline
+        if (candidate && job) {
+          try {
+            await dbHelpers.logStageChange(candidate, oldStageName, stageName, job);
+            console.log('📝 Timeline entry created for stage change');
+          } catch (timelineError) {
+            console.error('Failed to log timeline entry:', timelineError);
+          }
+        }
         
         // Update both candidates arrays
         setCandidates(prev => 
@@ -343,6 +356,17 @@ const CandidatesPage = () => {
         
         // Show success toast
         showSuccess(`New candidate ${newCandidate.name} created`);
+        
+        // Log to timeline
+        const job = jobs.find(j => j.id === newCandidate.jobId);
+        if (job) {
+          try {
+            await dbHelpers.logCandidateCreated(newCandidate, job);
+            console.log('📝 Timeline entry created for candidate creation');
+          } catch (timelineError) {
+            console.error('Failed to log timeline entry:', timelineError);
+          }
+        }
         
         setCandidates(prev => [...prev, newCandidate]);
         setAllCandidates(prev => [...prev, newCandidate]);

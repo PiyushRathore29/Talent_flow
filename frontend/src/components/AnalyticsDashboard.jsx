@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import ThemeToggle from './ThemeToggle';
+import db, { dbHelpers } from '../lib/database';
+import { formatDistanceToNow } from 'date-fns';
 
 const AnalyticsDashboard = () => {
   const navigate = useNavigate();
@@ -20,6 +22,7 @@ const AnalyticsDashboard = () => {
     totalAssessments: 0,
     activeApplications: 0,
     recentActivity: [],
+    mainMetrics: [],
     candidatePipeline: [],
     jobApplicationTrends: [],
     assessmentCompletion: []
@@ -46,7 +49,36 @@ const AnalyticsDashboard = () => {
       const assessmentsData = await assessmentsResponse.json();
       const assessments = assessmentsData.success ? assessmentsData.data : [];
 
-      // Calculate pipeline data
+      // Fetch candidates data directly from IndexedDB
+      const candidatesFromDB = await db.candidates.toArray();
+      const jobsFromDB = await dbHelpers.getAllJobs();
+      const assessmentsFromDB = await db.assessments.toArray();
+
+      // Calculate main metrics data for chart
+      const mainMetricsData = [
+        { 
+          metric: 'Job Openings', 
+          value: jobsFromDB.length,
+          color: '#0d9488'
+        },
+        { 
+          metric: 'Total Candidates', 
+          value: candidatesFromDB.length,
+          color: '#3b82f6'
+        },
+        { 
+          metric: 'Assessments', 
+          value: assessmentsFromDB.length,
+          color: '#8b5cf6'
+        },
+        { 
+          metric: 'Active Apps', 
+          value: candidatesFromDB.filter(c => !['hired', 'rejected'].includes(c.currentStage || c.stage)).length,
+          color: '#10b981'
+        }
+      ];
+
+      // Calculate pipeline data (keeping for compatibility)
       const pipelineData = [
         { stage: 'Applied', count: candidates.filter(c => c.stage === 'applied').length },
         { stage: 'Screening', count: candidates.filter(c => c.stage === 'screen').length },
@@ -73,13 +105,22 @@ const AnalyticsDashboard = () => {
         { name: 'Not Started', value: assessments.filter(a => a.status === 'not-started').length, color: '#ef4444' }
       ];
 
-      // Recent activity (mock data)
-      const recentActivity = [
-        { id: 1, type: 'application', message: 'John Doe applied for Senior Developer', time: '2 hours ago' },
-        { id: 2, type: 'interview', message: 'Interview scheduled with Sarah Johnson', time: '4 hours ago' },
-        { id: 3, type: 'assessment', message: 'Technical assessment completed by Mike Chen', time: '6 hours ago' },
-        { id: 4, type: 'offer', message: 'Offer extended to Emma Wilson', time: '1 day ago' }
-      ];
+      // Fetch recent activity from timeline
+      let recentActivity = [];
+      try {
+        const timelineEntries = await dbHelpers.getTimelineEntries(null, 10); // Get latest 10 entries
+        recentActivity = timelineEntries.map(entry => ({
+          id: entry.id,
+          type: entry.action === 'created' ? 'application' : 'stage_change',
+          message: entry.action === 'created' 
+            ? `${entry.candidateName} applied for a position`
+            : `${entry.candidateName} moved to ${entry.toStage}`,
+          time: formatDistanceToNow(new Date(entry.timestamp), { addSuffix: true })
+        }));
+      } catch (timelineError) {
+        console.error('Failed to fetch timeline data for analytics:', timelineError);
+        recentActivity = [];
+      }
 
       const finalData = {
         totalJobs: jobs.length,
@@ -87,6 +128,7 @@ const AnalyticsDashboard = () => {
         totalAssessments: assessments.length,
         activeApplications: candidates.filter(c => !['hired', 'rejected'].includes(c.stage)).length,
         recentActivity,
+        mainMetrics: mainMetricsData,
         candidatePipeline: pipelineData,
         jobApplicationTrends: trendsData,
         assessmentCompletion: completionData
@@ -203,16 +245,19 @@ const AnalyticsDashboard = () => {
 
           {/* Charts Row 1 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Candidate Pipeline */}
+            {/* Main Metrics Chart */}
             <div className="bg-white dark:bg-black rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-              <h3 className="text-lg font-impact font-medium uppercase text-primary-500 dark:text-primary-400 tracking-wide mb-4">Candidate Pipeline</h3>
+              <h3 className="text-lg font-impact font-medium uppercase text-primary-500 dark:text-primary-400 tracking-wide mb-4">Key Metrics Overview</h3>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={dashboardData.candidatePipeline}>
+                <BarChart data={dashboardData.mainMetrics}>
                   <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? '#374151' : '#e5e7eb'} />
                   <XAxis 
-                    dataKey="stage" 
-                    tick={{ fill: isDarkMode ? '#d1d5db' : '#6b7280', fontSize: 12 }}
+                    dataKey="metric" 
+                    tick={{ fill: isDarkMode ? '#d1d5db' : '#6b7280', fontSize: 11 }}
                     axisLine={{ stroke: isDarkMode ? '#4b5563' : '#9ca3af' }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
                   />
                   <YAxis 
                     tick={{ fill: isDarkMode ? '#d1d5db' : '#6b7280', fontSize: 12 }}
@@ -226,7 +271,12 @@ const AnalyticsDashboard = () => {
                       color: isDarkMode ? '#ffffff' : '#000000'
                     }}
                   />
-                  <Bar dataKey="count" fill="#0d9488" radius={[4, 4, 0, 0]} />
+                  <Bar 
+                    dataKey="value" 
+                    fill="#0d9488" 
+                    radius={[4, 4, 0, 0]}
+                    fillOpacity={0.8}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -313,23 +363,32 @@ const AnalyticsDashboard = () => {
             <div className="bg-white dark:bg-black rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
               <h3 className="text-lg font-impact font-medium uppercase text-primary-500 dark:text-primary-400 tracking-wide mb-4">Recent Activity</h3>
               <div className="space-y-4">
-                {dashboardData.recentActivity.map((activity) => (
-                  <div key={activity.id} className="flex items-start space-x-3">
-                    <div className="flex-shrink-0">
-                      {activity.type === 'application' && <Users className="w-5 h-5 text-blue-500" />}
-                      {activity.type === 'interview' && <Calendar className="w-5 h-5 text-purple-500" />}
-                      {activity.type === 'assessment' && <FileText className="w-5 h-5 text-orange-500" />}
-                      {activity.type === 'offer' && <CheckCircle className="w-5 h-5 text-green-500" />}
+                {dashboardData.recentActivity.length > 0 ? (
+                  dashboardData.recentActivity.map((activity) => (
+                    <div key={activity.id} className="flex items-start space-x-3">
+                      <div className="flex-shrink-0">
+                        {activity.type === 'application' && <Users className="w-5 h-5 text-blue-500" />}
+                        {activity.type === 'stage_change' && <ArrowRight className="w-5 h-5 text-green-500" />}
+                        {activity.type === 'interview' && <Calendar className="w-5 h-5 text-purple-500" />}
+                        {activity.type === 'assessment' && <FileText className="w-5 h-5 text-orange-500" />}
+                        {activity.type === 'offer' && <CheckCircle className="w-5 h-5 text-green-500" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-900 dark:text-white">{activity.message}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center mt-1">
+                          <Clock className="w-3 h-3 mr-1" />
+                          {activity.time}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-900 dark:text-white">{activity.message}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center mt-1">
-                        <Clock className="w-3 h-3 mr-1" />
-                        {activity.time}
-                      </p>
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm font-medium">No recent activity</p>
+                    <p className="text-xs mt-1">Activity will appear here as candidates progress</p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>

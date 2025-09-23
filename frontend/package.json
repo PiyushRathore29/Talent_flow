@@ -16,6 +16,7 @@
     "@faker-js/faker": "^9.9.0",
     "@xyflow/react": "^12.8.5",
     "axios": "^1.9.0",
+    "date-fns": "^4.1.0",
     "dexie": "^4.2.0",
     "framer-motion": "^12.23.15",
     "lucide-react": "^0.511.0",

@@ -5,7 +5,7 @@ export class TalentFlowDB extends Dexie {
   constructor() {
     super('TalentFlowDB');
     
-    this.version(5).stores({
+    this.version(6).stores({
       // Authentication & Users
       users: '++id, email, &username, companyId, role, createdAt, lastLogin',
       companies: '++id, &name, domain, createdAt',
@@ -20,6 +20,9 @@ export class TalentFlowDB extends Dexie {
       candidateHistory: '++id, candidateId, fromStageId, toStageId, changedBy, changedAt, note',
       candidateNotes: '++id, candidateId, authorId, text, mentions, createdAt',
       
+      // Timeline System - Comprehensive activity tracking
+      timeline: '++id, candidateId, candidateName, action, actionType, description, fromStage, toStage, timestamp, hrUserId, hrUserName, jobId, jobTitle, metadata',
+      
       // Application System
       applications: '++id, jobId, candidateId, candidateName, candidateEmail, status, appliedAt, createdAt, updatedAt',
       
@@ -32,8 +35,8 @@ export class TalentFlowDB extends Dexie {
       // Application Settings
       appSettings: '++id, userId, companyId, settings, updatedAt'
     }).upgrade(trans => {
-      // Migration from version 3 to 4: Enhanced assessment system
-      console.log('Upgraded database to version 4: Enhanced assessment system with detailed question types and responses');
+      // Migration from version 5 to 6: Add comprehensive timeline system
+      console.log('Upgraded database to version 6: Added comprehensive timeline system for tracking all candidate activities');
     });
   }
 }
@@ -340,6 +343,94 @@ export const dbHelpers = {
     return await db.candidateHistory.where('candidateId').equals(candidateId).orderBy('changedAt').toArray();
   },
 
+  // Timeline Management - Comprehensive activity tracking
+  async addTimelineEntry(timelineData) {
+    const entry = {
+      timestamp: new Date().toISOString(),
+      hrUserId: 1, // Default to admin user for now
+      hrUserName: "Admin User",
+      metadata: {},
+      ...timelineData
+    };
+    return await db.timeline.add(entry);
+  },
+
+  async getTimelineEntries(candidateId = null, limit = null) {
+    let query = candidateId 
+      ? db.timeline.where('candidateId').equals(candidateId)
+      : db.timeline.orderBy('timestamp').reverse();
+    
+    const entries = await query.toArray();
+    
+    // Sort by timestamp descending (newest first)
+    entries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
+    return limit ? entries.slice(0, limit) : entries;
+  },
+
+  async getTimelineStats() {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const thisWeek = new Date(today.getTime() - (7 * 24 * 60 * 60 * 1000));
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const allEntries = await db.timeline.toArray();
+    
+    const todayEntries = allEntries.filter(entry => 
+      new Date(entry.timestamp) >= today
+    );
+    
+    const weekEntries = allEntries.filter(entry => 
+      new Date(entry.timestamp) >= thisWeek
+    );
+    
+    const monthEntries = allEntries.filter(entry => 
+      new Date(entry.timestamp) >= thisMonth
+    );
+
+    return {
+      today: todayEntries.length,
+      thisWeek: weekEntries.length,
+      thisMonth: monthEntries.length,
+      total: allEntries.length
+    };
+  },
+
+  // Log candidate creation
+  async logCandidateCreated(candidate, job) {
+    return await this.addTimelineEntry({
+      candidateId: candidate.id,
+      candidateName: candidate.name,
+      action: "created",
+      actionType: "candidate_created",
+      description: `New candidate ${candidate.name} created`,
+      fromStage: null,
+      toStage: "applied",
+      jobId: job.id,
+      jobTitle: job.title,
+      metadata: {
+        candidateEmail: candidate.email,
+        jobLocation: job.location
+      }
+    });
+  },
+
+  // Log stage progression
+  async logStageChange(candidate, fromStage, toStage, job) {
+    return await this.addTimelineEntry({
+      candidateId: candidate.id,
+      candidateName: candidate.name,
+      action: "stage_changed",
+      actionType: "stage_progression",
+      description: `Moved from ${fromStage} to ${toStage}`,
+      fromStage: fromStage,
+      toStage: toStage,
+      jobId: job?.id,
+      jobTitle: job?.title,
+      metadata: {}
+    });
+  },
+
   // Candidate Notes
   async addCandidateNote(noteData) {
     const note = {
@@ -402,7 +493,7 @@ export const dbHelpers = {
 
   async exportData() {
     const data = {};
-    const tables = ['users', 'companies', 'jobs', 'jobStages', 'candidates', 'candidateHistory', 'candidateNotes', 'assessments', 'assessmentResponses'];
+    const tables = ['users', 'companies', 'jobs', 'jobStages', 'candidates', 'candidateHistory', 'candidateNotes', 'timeline', 'assessments', 'assessmentResponses'];
     
     for (const table of tables) {
       data[table] = await db[table].toArray();
@@ -566,7 +657,7 @@ export const initializeSampleData = async () => {
     console.log('Initializing sample data...');
     
     // Use transaction to ensure atomicity
-    await db.transaction('rw', [db.companies, db.users], async () => {
+    await db.transaction('rw', [db.companies, db.users, db.candidates, db.timeline], async () => {
       // Create sample companies
       const company1Id = await dbHelpers.createCompany({
         name: 'TechCorp Inc',
@@ -628,6 +719,114 @@ export const initializeSampleData = async () => {
         role: 'candidate',
         companyId: null
       });
+
+      // Create sample candidates
+      const candidate1Id = await db.candidates.add({
+        name: 'Alex Thompson',
+        email: 'alex.thompson@email.com',
+        phone: '+1-555-0101',
+        currentStage: 'Applied',
+        position: 'Senior Frontend Developer',
+        experience: '5 years',
+        skills: ['React', 'TypeScript', 'Node.js'],
+        status: 'Active',
+        notes: 'Strong React experience, good portfolio',
+        resumeUrl: null,
+        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+        updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
+      });
+
+      const candidate2Id = await db.candidates.add({
+        name: 'Sarah Rodriguez',
+        email: 'sarah.rodriguez@email.com',
+        phone: '+1-555-0102',
+        currentStage: 'Phone Screen',
+        position: 'Backend Developer',
+        experience: '3 years',
+        skills: ['Python', 'Django', 'PostgreSQL'],
+        status: 'Active',
+        notes: 'Good communication skills, solid backend knowledge',
+        resumeUrl: null,
+        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
+        updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)  // 1 day ago
+      });
+
+      const candidate3Id = await db.candidates.add({
+        name: 'Michael Chen',
+        email: 'michael.chen@email.com',
+        phone: '+1-555-0103',
+        currentStage: 'Technical Interview',
+        position: 'Full Stack Developer',
+        experience: '4 years',
+        skills: ['JavaScript', 'React', 'Express', 'MongoDB'],
+        status: 'Active',
+        notes: 'Great problem-solving skills, quick learner',
+        resumeUrl: null,
+        createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+        updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000)       // 2 hours ago
+      });
+
+      // Create sample timeline entries
+      const timelineEntries = [
+        {
+          candidateId: candidate1Id,
+          candidateName: 'Alex Thompson',
+          action: 'created',
+          fromStage: null,
+          toStage: 'Applied',
+          details: 'New candidate application received',
+          timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
+        },
+        {
+          candidateId: candidate2Id,
+          candidateName: 'Sarah Rodriguez',
+          action: 'created',
+          fromStage: null,
+          toStage: 'Applied',
+          details: 'New candidate application received',
+          timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+        },
+        {
+          candidateId: candidate2Id,
+          candidateName: 'Sarah Rodriguez',
+          action: 'moved',
+          fromStage: 'Applied',
+          toStage: 'Phone Screen',
+          details: 'Moved to Phone Screen stage',
+          timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
+        },
+        {
+          candidateId: candidate3Id,
+          candidateName: 'Michael Chen',
+          action: 'created',
+          fromStage: null,
+          toStage: 'Applied',
+          details: 'New candidate application received',
+          timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+        },
+        {
+          candidateId: candidate3Id,
+          candidateName: 'Michael Chen',
+          action: 'moved',
+          fromStage: 'Applied',
+          toStage: 'Phone Screen',
+          details: 'Moved to Phone Screen stage',
+          timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
+        },
+        {
+          candidateId: candidate3Id,
+          candidateName: 'Michael Chen',
+          action: 'moved',
+          fromStage: 'Phone Screen',
+          toStage: 'Technical Interview',
+          details: 'Moved to Technical Interview stage',
+          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000)
+        }
+      ];
+
+      for (const entry of timelineEntries) {
+        await db.timeline.add(entry);
+      }
     });
     
     console.log('Sample data initialized successfully');
@@ -660,6 +859,7 @@ export const clearAllData = async () => {
       db.assessmentAttempts,
       db.candidateHistory, 
       db.jobStages, 
+      db.timeline,
       db.appSettings
     ], async () => {
       await Promise.all([
@@ -673,6 +873,7 @@ export const clearAllData = async () => {
         db.assessmentResponses.clear(),
         db.assessmentAttempts.clear(),
         db.candidateHistory.clear(),
+        db.timeline.clear(),
         db.jobStages.clear(),
         db.appSettings.clear()
       ]);
