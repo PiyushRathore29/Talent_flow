@@ -13,6 +13,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { ArrowLeft, BarChart3 } from 'lucide-react';
+import { dbHelpers } from '../lib/database';
 
 import JobNode from '../components/flow/JobNode';
 import CandidateNode from '../components/flow/CandidateNode';
@@ -58,7 +59,10 @@ const FlowDashboard = () => {
 
   // Custom nodes change handler for database persistence
   const handleNodesChange = useCallback(async (changes) => {
-    // Handle job reordering
+    // Apply all changes to nodes first
+    onNodesChange(changes);
+
+    // Handle job reordering - only process when dragging ends
     const positionChanges = changes.filter(change => 
       change.type === 'position' && change.dragging === false
     );
@@ -79,9 +83,6 @@ const FlowDashboard = () => {
         }
       }
     }
-
-    // Apply all changes to nodes
-    onNodesChange(changes);
   }, [nodes, onNodesChange]);
 
   const onConnect = useCallback(
@@ -134,6 +135,92 @@ const FlowDashboard = () => {
     }
   };
 
+  // New function to refresh only candidates data while preserving positions
+  const refreshCandidatesOnly = async () => {
+    try {
+      const candidatesResponse = await fetch('/api/candidates');
+      const candidatesData = await candidatesResponse.json();
+      const jobCandidates = candidatesData.filter(c => c.jobId === parseInt(jobId));
+      setCandidates(jobCandidates);
+
+      // Update stages with new candidate data
+      const updatedStages = stages.map(stage => ({
+        ...stage,
+        candidates: jobCandidates.filter(c => c.stage === stage.id)
+      }));
+      setStages(updatedStages);
+
+      // Update nodes while preserving their positions
+      updateNodesWithPreservedPositions(updatedStages);
+    } catch (error) {
+      console.error('Error refreshing candidates:', error);
+    }
+  };
+
+  // Update nodes while preserving their current positions
+  const updateNodesWithPreservedPositions = (updatedStages) => {
+    setNodes(currentNodes => {
+      // Calculate new dynamic positions
+      let currentY = 200;
+      const baseStageHeight = 120;
+      const candidateItemHeight = 60;
+      const stageSpacing = 80;
+      
+      return currentNodes.map(node => {
+        // For candidate nodes, update the data and recalculate positions
+        if (node.type === 'candidate') {
+          const stageId = node.data.stage;
+          const updatedStage = updatedStages.find(s => s.id === stageId);
+          const stageIndex = updatedStages.findIndex(s => s.id === stageId);
+          
+          if (updatedStage && stageIndex !== -1) {
+            // Calculate Y position based on previous stages
+            let calculatedY = 200;
+            for (let i = 0; i < stageIndex; i++) {
+              const prevStage = updatedStages[i];
+              const prevCandidateCount = prevStage.candidates ? prevStage.candidates.length : 0;
+              const prevStageHeight = Math.max(baseStageHeight, prevCandidateCount * candidateItemHeight);
+              calculatedY += prevStageHeight + stageSpacing;
+            }
+            
+            return {
+              ...node,
+              position: { ...node.position, y: calculatedY },
+              data: {
+                ...node.data,
+                candidates: updatedStage.candidates || []
+              }
+            };
+          }
+        }
+        
+        // For stage title nodes, also update positions
+        if (node.type === 'stageTitle') {
+          const stageId = node.id.replace('stage-title-', '');
+          const stageIndex = updatedStages.findIndex(s => s.id === stageId);
+          
+          if (stageIndex !== -1) {
+            // Calculate Y position based on previous stages
+            let calculatedY = 200;
+            for (let i = 0; i < stageIndex; i++) {
+              const prevStage = updatedStages[i];
+              const prevCandidateCount = prevStage.candidates ? prevStage.candidates.length : 0;
+              const prevStageHeight = Math.max(baseStageHeight, prevCandidateCount * candidateItemHeight);
+              calculatedY += prevStageHeight + stageSpacing;
+            }
+            
+            return {
+              ...node,
+              position: { ...node.position, y: calculatedY }
+            };
+          }
+        }
+        
+        return node;
+      });
+    });
+  };
+
   const generateNodesAndEdges = (jobData, stagesData, assessmentsData) => {
     const newNodes = [];
     const newEdges = [];
@@ -149,15 +236,23 @@ const FlowDashboard = () => {
       }
     });
 
+    // Calculate dynamic positions for stages based on content
+    let currentY = 200; // Starting Y position
+    const baseStageHeight = 120; // Minimum height for a stage
+    const candidateItemHeight = 60; // Height per candidate item
+    const stageSpacing = 80; // Spacing between stages
+
     // Stage nodes
     stagesData.forEach((stage, index) => {
-      const stageY = 200 + (index * 400);
+      // Calculate dynamic height based on number of candidates
+      const candidateCount = stage.candidates ? stage.candidates.length : 0;
+      const stageContentHeight = Math.max(baseStageHeight, candidateCount * candidateItemHeight);
       
       // Stage title
       newNodes.push({
         id: `stage-title-${stage.id}`,
         type: 'stageTitle',
-        position: { x: 50, y: stageY },
+        position: { x: 50, y: currentY },
         data: { 
           stage: stage.name,
           onEdit: () => {
@@ -172,7 +267,7 @@ const FlowDashboard = () => {
       newNodes.push({
         id: `candidates-${stage.id}`,
         type: 'candidate',
-        position: { x: 300, y: stageY },
+        position: { x: 300, y: currentY },
         data: { 
           stage: stage.id,
           stageName: stage.name,
@@ -206,9 +301,12 @@ const FlowDashboard = () => {
           type: 'smoothstep'
         });
       }
+
+      // Update Y position for next stage
+      currentY += stageContentHeight + stageSpacing;
     });
 
-    // Assessment nodes
+    // Assessment nodes - position them to the right, distributed vertically
     assessmentsData.forEach((assessment, index) => {
       newNodes.push({
         id: `assessment-${assessment.id}`,
@@ -221,7 +319,7 @@ const FlowDashboard = () => {
       });
     });
 
-    // Add stage edge (for adding new stages)
+    // Add stage edge (for adding new stages) - position at the end
     if (stagesData.length > 0) {
       const lastStage = stagesData[stagesData.length - 1];
       newEdges.push({
@@ -232,11 +330,11 @@ const FlowDashboard = () => {
         data: { onAddStage: handleAddStage }
       });
 
-      // Invisible target node for add stage edge
+      // Invisible target node for add stage edge - position at the calculated end
       newNodes.push({
         id: 'add-stage-target',
         type: 'default',
-        position: { x: 300, y: 200 + (stagesData.length * 400) },
+        position: { x: 300, y: currentY },
         style: { opacity: 0, pointerEvents: 'none' },
         data: {}
       });
@@ -257,14 +355,34 @@ const FlowDashboard = () => {
       if (currentStageIndex < stages.length - 1) {
         const nextStage = stages[currentStageIndex + 1];
         
+        // Get candidate details for timeline
+        const candidate = candidates.find(c => c.id === candidateId);
+        
         await fetch(`/api/candidates/${candidateId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ stage: nextStage.id })
         });
 
-        // Refresh the flow
-        fetchJobFlow();
+        // Add timeline entry for the stage change
+        if (candidate) {
+          try {
+            await dbHelpers.addTimelineEntry({
+              candidateId: candidateId,
+              candidateName: candidate.name,
+              action: 'moved',
+              fromStage: stages[currentStageIndex].name,
+              toStage: nextStage.name,
+              details: `Moved from ${stages[currentStageIndex].name} to ${nextStage.name}`,
+              timestamp: new Date()
+            });
+          } catch (timelineError) {
+            console.error('Failed to create timeline entry:', timelineError);
+          }
+        }
+
+        // Instead of full refresh, just update candidates data and regenerate with preserved positions
+        await refreshCandidatesOnly();
       }
     } catch (error) {
       console.error('Error moving candidate:', error);

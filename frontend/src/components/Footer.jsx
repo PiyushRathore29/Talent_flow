@@ -96,7 +96,7 @@ const Footer = () => {
               <div className="w-full h-0.5 bg-white group-hover:opacity-70 transition-opacity" />
             </div>
 
-            <div className="flex flex-col items-start sm:items-center group cursor-pointer" onClick={() => window.scrollTo(0, 0)}>
+            <div className="flex flex-col items-start sm:items-center group cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
               <span className="text-nav font-inter font-semibold text-white group-hover:opacity-70 transition-opacity">
                 Back to Top
               </span>

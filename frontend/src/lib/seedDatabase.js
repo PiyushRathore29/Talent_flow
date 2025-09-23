@@ -277,6 +277,10 @@ export const seedDatabase = async () => {
     console.log('✅ Seeding assessment responses...');
     await seedAssessmentResponses(assessmentIds, candidateIds);
     
+    // Seed timeline entries for candidate creation
+    console.log('📅 Seeding timeline entries...');
+    await seedTimeline(candidateIds);
+    
     console.log('🎉 Database seeding completed successfully!');
     
     // Print summary
@@ -302,6 +306,7 @@ const clearDatabase = async () => {
     db.assessmentQuestions.clear(),
     db.assessmentResponses.clear(),
     db.assessmentAttempts.clear(),
+    db.timeline.clear(),
     db.appSettings.clear()
   ]);
 };
@@ -488,10 +493,12 @@ const seedCandidates = async (companyIds, jobIds, userIds) => {
   const candidateIds = [];
   const candidateUserIds = userIds.slice(5); // Skip employer users
   
-  for (let i = 0; i < 100; i++) {
+  // Generate 1000 candidates distributed across all jobs
+  for (let i = 0; i < 1000; i++) {
     const firstName = getRandomItem(firstNames);
     const lastName = getRandomItem(lastNames);
-    const jobId = getRandomItem(jobIds);
+    // Distribute candidates evenly across all jobs
+    const jobId = jobIds[i % jobIds.length];
     const appliedDate = getRandomDate(new Date(2024, 0, 1), new Date());
     
     const id = await db.candidates.add({
@@ -501,8 +508,9 @@ const seedCandidates = async (companyIds, jobIds, userIds) => {
       name: `${firstName} ${lastName}`,
       email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}.${i}@email.com`,
       phone: `+1 (555) ${String(Math.floor(Math.random() * 900) + 100)}-${String(Math.floor(Math.random() * 9000) + 1000)}`,
-      stage: getRandomItem(stages).id,
-      currentStageId: Math.floor(Math.random() * 6) + 1,
+      stage: 'applied', // All candidates start in applied stage
+      currentStage: 'Applied', // Consistent naming
+      currentStageId: 1, // Applied stage ID
       appliedDate,
       createdAt: appliedDate,
       resume: `Experienced professional with ${Math.floor(Math.random() * 10) + 1} years in the industry. Strong background in ${getRandomItems(skillTags, 3).join(', ')}. Proven track record of delivering high-quality results and working effectively in team environments.`,
@@ -571,6 +579,26 @@ const seedAssessmentResponses = async (assessmentIds, candidateIds) => {
   }
 };
 
+const seedTimeline = async (candidateIds) => {
+  // Create timeline entries for all candidate creations
+  for (const candidateId of candidateIds) {
+    // Get the candidate details to create timeline entry
+    const candidate = await db.candidates.get(candidateId);
+    
+    if (candidate) {
+      await db.timeline.add({
+        candidateId: candidateId,
+        candidateName: candidate.name,
+        action: 'created',
+        fromStage: null,
+        toStage: 'Applied',
+        details: 'New candidate application received',
+        timestamp: candidate.appliedDate || candidate.createdAt
+      });
+    }
+  }
+};
+
 const printSeedingSummary = async () => {
   const counts = {
     companies: await db.companies.count(),
@@ -581,7 +609,8 @@ const printSeedingSummary = async () => {
     candidateHistory: await db.candidateHistory.count(),
     assessments: await db.assessments.count(),
     assessmentQuestions: await db.assessmentQuestions.count(),
-    assessmentResponses: await db.assessmentResponses.count()
+    assessmentResponses: await db.assessmentResponses.count(),
+    timeline: await db.timeline.count()
   };
   
   console.log('\n📊 SEEDING SUMMARY:');
@@ -595,6 +624,7 @@ const printSeedingSummary = async () => {
   console.log(`📝 Assessments: ${counts.assessments}`);
   console.log(`❓ Assessment Questions: ${counts.assessmentQuestions}`);
   console.log(`✅ Assessment Responses: ${counts.assessmentResponses}`);
+  console.log(`📅 Timeline Entries: ${counts.timeline}`);
   console.log('==================\n');
 };
 
