@@ -317,7 +317,9 @@ export const dbHelpers = {
   },
 
   async getCandidatesByJob(jobId) {
+    console.log('🔍 [DB] Getting candidates for job:', jobId);
     const candidates = await db.candidates.where('jobId').equals(jobId).toArray();
+    console.log('🔍 [DB] Found candidates:', candidates.length, candidates);
     
     // Fetch user data for each candidate
     const candidatesWithUserData = await Promise.all(
@@ -341,6 +343,7 @@ export const dbHelpers = {
       })
     );
     
+    console.log('🔍 [DB] Candidates with user data:', candidatesWithUserData);
     return candidatesWithUserData;
   },
 
@@ -694,7 +697,7 @@ export const initializeSampleData = async () => {
     console.log('Initializing sample data...');
     
     // Use transaction to ensure atomicity
-    await db.transaction('rw', [db.companies, db.users, db.candidates, db.timeline], async () => {
+    await db.transaction('rw', [db.companies, db.users, db.jobs, db.jobStages, db.candidates, db.timeline], async () => {
       // Create sample companies
       const company1Id = await dbHelpers.createCompany({
         name: 'TechCorp Inc',
@@ -708,7 +711,7 @@ export const initializeSampleData = async () => {
       
       // Create sample users
       const hr1Id = await dbHelpers.createUser({
-        email: 'hr@techcorp.com',
+        email: 'sarah.wilson@techcorp.com',
         username: 'hr_techcorp',
         password: 'password123', // In production, hash this
         firstName: 'Sarah',
@@ -755,6 +758,133 @@ export const initializeSampleData = async () => {
         lastName: 'Smith',
         role: 'candidate',
         companyId: null
+      });
+
+      // Create sample jobs
+      const job1Id = await dbHelpers.createJob({
+        companyId: company1Id,
+        title: 'Senior Frontend Developer',
+        status: 'Active',
+        description: 'Join our team to build amazing user interfaces with React and TypeScript.',
+        location: 'Remote',
+        salary: '$80,000 - $120,000',
+        type: 'Full-time',
+        companyName: 'TechCorp Inc',
+        postedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+        applicants: 0,
+        createdById: hr1Id
+      });
+
+      const job2Id = await dbHelpers.createJob({
+        companyId: company1Id,
+        title: 'Product Manager',
+        status: 'Active',
+        description: 'Lead the vision and roadmap for our core product. Work with engineering and design teams.',
+        location: 'San Francisco, CA',
+        salary: '$100,000 - $140,000',
+        type: 'Full-time',
+        companyName: 'TechCorp Inc',
+        postedDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+        applicants: 0,
+        createdById: hr1Id
+      });
+
+      const job3Id = await dbHelpers.createJob({
+        companyId: company2Id,
+        title: 'UX/UI Designer',
+        status: 'Active',
+        description: 'Design beautiful and intuitive user experiences for our platform.',
+        location: 'New York, NY',
+        salary: '$70,000 - $100,000',
+        type: 'Contract',
+        companyName: 'StartupHub',
+        postedDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 1 week ago
+        applicants: 0,
+        createdById: hr3Id
+      });
+
+      // Create default stages for each job
+      await dbHelpers.createJobStage({
+        jobId: job1Id,
+        name: 'Applied',
+        order: 1,
+        type: 'candidate',
+        position: JSON.stringify({ x: 0, y: 250 }),
+        nodeId: `job-${job1Id}-stage-applied`
+      });
+
+      await dbHelpers.createJobStage({
+        jobId: job1Id,
+        name: 'Screening',
+        order: 2,
+        type: 'candidate',
+        position: JSON.stringify({ x: 400, y: 250 }),
+        nodeId: `job-${job1Id}-stage-screening`
+      });
+
+      await dbHelpers.createJobStage({
+        jobId: job1Id,
+        name: 'Interview',
+        order: 3,
+        type: 'candidate',
+        position: JSON.stringify({ x: 800, y: 250 }),
+        nodeId: `job-${job1Id}-stage-interview`
+      });
+
+      await dbHelpers.createJobStage({
+        jobId: job1Id,
+        name: 'Offer',
+        order: 4,
+        type: 'candidate',
+        position: JSON.stringify({ x: 1200, y: 250 }),
+        nodeId: `job-${job1Id}-stage-offer`
+      });
+
+      // Add stages for job 2
+      await dbHelpers.createJobStage({
+        jobId: job2Id,
+        name: 'Applied',
+        order: 1,
+        type: 'candidate',
+        position: JSON.stringify({ x: 0, y: 250 }),
+        nodeId: `job-${job2Id}-stage-applied`
+      });
+
+      await dbHelpers.createJobStage({
+        jobId: job2Id,
+        name: 'Assessment',
+        order: 2,
+        type: 'assessment',
+        position: JSON.stringify({ x: 400, y: 250 }),
+        nodeId: `job-${job2Id}-stage-assessment`
+      });
+
+      await dbHelpers.createJobStage({
+        jobId: job2Id,
+        name: 'Interview',
+        order: 3,
+        type: 'candidate',
+        position: JSON.stringify({ x: 800, y: 250 }),
+        nodeId: `job-${job2Id}-stage-interview`
+      });
+
+      // Add stages for job 3
+      await dbHelpers.createJobStage({
+        jobId: job3Id,
+        name: 'Applied',
+        order: 1,
+        type: 'candidate',
+        position: JSON.stringify({ x: 0, y: 250 }),
+        nodeId: `job-${job3Id}-stage-applied`
+      });
+
+      await dbHelpers.createJobStage({
+        jobId: job3Id,
+        name: 'Portfolio Review',
+        order: 2,
+        type: 'candidate',
+        position: JSON.stringify({ x: 400, y: 250 }),
+        nodeId: `job-${job3Id}-stage-portfolio`
       });
 
       // Create sample candidates

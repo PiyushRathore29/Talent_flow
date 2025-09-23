@@ -17,6 +17,8 @@ import DocsPage from './pages/DocsPage';
 // Dashboard and main pages
 import DashboardPage from './pages/DashboardPage';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
+import CandidateDashboardPage from './pages/CandidateDashboardPage';
+import CandidateJobsPage from './pages/CandidateJobsPage';
 import FlowDashboard from './components/FlowDashboard';
 import JobsPage from './pages/JobsPage';
 import JobDetailPage from './pages/JobDetailPage';
@@ -32,23 +34,7 @@ import DatabaseSeederPage from './pages/DatabaseSeederPage';
 import MSWTester from './components/MSWTester';
 
 // Protected route component
-const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth();
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
-    );
-  }
-  
-  if (!user) {
-    return <Navigate to="/signin" replace />;
-  }
-  
-  return children;
-};
+import ProtectedRoute from './components/ProtectedRoute';
 
 // Public route component (redirect if already authenticated)
 const PublicRoute = ({ children }) => {
@@ -63,7 +49,7 @@ const PublicRoute = ({ children }) => {
   }
   
   if (user) {
-    return <Navigate to={user.role === 'hr' ? '/dashboard/employer' : '/dashboard/candidate'} replace />;
+    return <Navigate to={user.role === 'hr' ? '/dashboard' : '/dashboard/candidate'} replace />;
   }
   
   return children;
@@ -90,77 +76,86 @@ function AppRoutes() {
             <Route path="/msw-tester" element={<MSWTester />} />
             <Route path="/seed-database" element={<DatabaseSeederPage />} />
             
-            {/* Main application routes - matching API patterns */}
+            {/* Main application routes - Role-based access control */}
             <Route path="/dashboard" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['hr']}>
                 <AnalyticsDashboard />
               </ProtectedRoute>
             } />
+            <Route path="/dashboard/candidate" element={
+              <ProtectedRoute allowedRoles={['candidate']}>
+                <CandidateDashboardPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/candidate/jobs" element={
+              <ProtectedRoute allowedRoles={['candidate']}>
+                <CandidateJobsPage />
+              </ProtectedRoute>
+            } />
             <Route path="/dashboard/flow/:jobId" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['hr']}>
                 <FlowDashboard />
               </ProtectedRoute>
             } />
             
-            {/* Jobs routes - GET /jobs, POST /jobs, PATCH /jobs/:id, PATCH /jobs/:id/reorder */}
+            {/* Jobs routes - HR only */}
             <Route path="/jobs" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['hr']}>
                 <JobsPage />
               </ProtectedRoute>
             } />
             <Route path="/jobs/:jobId" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['hr']}>
                 <JobDetailPage />
               </ProtectedRoute>
             } />
             <Route path="/jobs/:jobId/flow" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['hr']}>
                 <JobFlowPage />
               </ProtectedRoute>
             } />
             
-            {/* Candidates routes - GET /candidates, POST /candidates, PATCH /candidates/:id, GET /candidates/:id/timeline */}
+            {/* Candidates routes - HR only */}
             <Route path="/candidates" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['hr']}>
                 <CandidatesPage />
               </ProtectedRoute>
             } />
             <Route path="/candidates/:candidateId" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['hr']}>
                 <CandidateProfilePage />
               </ProtectedRoute>
             } />
             <Route path="/candidates/:candidateId/timeline" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['hr']}>
                 <CandidateProfilePage />
               </ProtectedRoute>
             } />
             
-            {/* Assessments routes - GET /assessments/:jobId, PUT /assessments/:jobId, POST /assessments/:jobId/submit */}
+            {/* Assessments routes - HR can create, candidates can take */}
             <Route path="/assessments" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['hr']}>
                 <AssessmentsPage />
               </ProtectedRoute>
             } />
             <Route path="/assessments/:jobId" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['hr']}>
                 <AssessmentBuilderPage />
               </ProtectedRoute>
             } />
             <Route path="/assessments/:jobId/take" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['candidate']}>
                 <AssessmentTakePage />
               </ProtectedRoute>
             } />
             <Route path="/assessments/:jobId/submit" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['candidate']}>
                 <AssessmentTakePage />
               </ProtectedRoute>
             } />
             
             {/* Redirect legacy routes */}
             <Route path="/dashboard/employer" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard/candidate" element={<Navigate to="/dashboard" replace />} />
             
             {/* Catch all route */}
             <Route path="*" element={<Navigate to="/" replace />} />

@@ -42,16 +42,29 @@ const reconstructJobFlow = async (job) => {
     }
     
     // Reconstruct from database stages
-    const stageNodes = stages.map(stage => ({
-      id: stage.nodeId,
-      type: stage.type,
-      position: JSON.parse(stage.position),
-      data: {
-        stage: stage.name,
-        candidates: [],
-        assessment: stage.type === 'assessment' ? null : undefined
+    const stageNodes = stages.map(stage => {
+      let position;
+      try {
+        // Handle both string and object formats for position
+        position = typeof stage.position === 'string' 
+          ? JSON.parse(stage.position) 
+          : stage.position || { x: 100, y: 100 };
+      } catch (error) {
+        console.warn('Failed to parse stage position:', stage.position, error);
+        position = { x: 100, y: 100 };
       }
-    }));
+      
+      return {
+        id: stage.nodeId,
+        type: stage.type,
+        position: position,
+        data: {
+          stage: stage.name,
+          candidates: [],
+          assessment: stage.type === 'assessment' ? null : undefined
+        }
+      };
+    });
     
     // Add job node if not present
     const jobNode = {
@@ -128,6 +141,9 @@ export const JobsProvider = ({ children }) => {
           jobsList = await dbHelpers.getAllJobs();
         }
 
+        console.log('🗄️ Jobs loaded from database:', jobsList.length, 'jobs');
+        console.log('🗄️ First job:', jobsList[0]);
+
         // Convert array to object with id as key and set order
         const jobsObj = {};
         const orderArray = [];
@@ -162,18 +178,29 @@ export const JobsProvider = ({ children }) => {
         for (const jobId of Object.keys(jobsObj)) {
           try {
             const candidates = await dbHelpers.getCandidatesByJob(parseInt(jobId));
+            console.log(`🔍 Loading candidates for job ${jobId}:`, candidates.length, 'candidates found');
+            
+            if (candidates.length > 0) {
+              console.log('📋 Sample candidate data:', candidates[0]);
+              console.log('🎯 Candidate stage IDs:', candidates.map(c => ({ name: c.name, stageId: c.currentStageId })));
+            }
             
             // Load assessments for this job
             const assessments = await dbHelpers.getAssessmentsByJob(parseInt(jobId));
             
             // Update nodes with candidate data and assessment data
             if (jobsObj[jobId].nodes && jobsObj[jobId].nodes.length > 0) {
+              console.log(`🧩 Job ${jobId} has ${jobsObj[jobId].nodes.length} nodes:`, jobsObj[jobId].nodes.map(n => ({ id: n.id, type: n.type })));
+              
               jobsObj[jobId].nodes = await Promise.all(jobsObj[jobId].nodes.map(async (node) => {
                 if (node.type === 'candidate') {
                   // Find candidates for this stage
                   const stageCandidates = candidates.filter(candidate => 
                     candidate.currentStageId === node.id
                   );
+                  console.log(`📍 Stage "${node.id}" checking against candidates:`, candidates.map(c => c.currentStageId));
+                  console.log(`📍 Stage "${node.id}" matched ${stageCandidates.length} candidates:`, stageCandidates.map(c => c.name));
+                  
                   return {
                     ...node,
                     data: {

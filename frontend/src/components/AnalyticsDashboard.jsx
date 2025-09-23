@@ -6,9 +6,10 @@ import {
 } from 'recharts';
 import { 
   Users, Briefcase, FileText, TrendingUp, Clock, CheckCircle,
-  ArrowRight, Calendar, Target, Activity
+  ArrowRight, Calendar, Target, Activity, LogOut
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 import ThemeToggle from './ThemeToggle';
 import db, { dbHelpers } from '../lib/database';
 import { formatDistanceToNow } from 'date-fns';
@@ -16,6 +17,7 @@ import { formatDistanceToNow } from 'date-fns';
 const AnalyticsDashboard = () => {
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
+  const { signOut } = useAuth();
   const [dashboardData, setDashboardData] = useState({
     totalJobs: 0,
     totalCandidates: 0,
@@ -166,6 +168,13 @@ const AnalyticsDashboard = () => {
               <Activity className="w-4 h-4 mr-2" />
               View Jobs Flow
               <ArrowRight className="w-4 h-4 ml-2" />
+            </button>
+            <button
+              onClick={signOut}
+              className="inline-flex items-center px-3 py-2 bg-gray-600 dark:bg-gray-700 text-white font-medium rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
             </button>
           </div>
         </div>

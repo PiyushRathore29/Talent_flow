@@ -15,11 +15,18 @@ const SignInPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const autofillDemo = () => {
-    setFormData({
-      email: 'hr@techcorp.com',
-      password: 'password123'
-    });
+  const autofillDemo = (role = 'hr') => {
+    if (role === 'hr') {
+      setFormData({
+        email: 'sarah.wilson@techcorp.com',
+        password: 'password123'
+      });
+    } else {
+      setFormData({
+        email: 'john.doe@example.com',
+        password: 'password123'
+      });
+    }
   };
 
   const handleChange = (e) => {
@@ -128,14 +135,23 @@ const SignInPage = () => {
               </div>
             </div>
 
-            {/* Autofill Demo Button */}
-            <button
-              type="button"
-              onClick={autofillDemo}
-              className="w-full py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors duration-200"
-            >
-              Autofill Demo Login
-            </button>
+            {/* Autofill Demo Buttons */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => autofillDemo('hr')}
+                className="py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors duration-200"
+              >
+                HR Login
+              </button>
+              <button
+                type="button"
+                onClick={() => autofillDemo('candidate')}
+                className="py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors duration-200"
+              >
+                Candidate Login
+              </button>
+            </div>
 
             {/* Sign In Button */}
             <button
@@ -161,7 +177,7 @@ const SignInPage = () => {
           <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
             <p className="text-xs text-gray-600 dark:text-gray-400 text-center">
               <strong>Demo Credentials:</strong><br />
-              <strong>HR:</strong> hr@techcorp.com / password123<br />
+              <strong>HR:</strong> sarah.wilson@techcorp.com / password123<br />
               <strong>Candidate:</strong> john.doe@example.com / password123
             </p>
           </div>

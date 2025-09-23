@@ -15,6 +15,27 @@ const CandidateJobsBoard = () => {
   const [typeFilter, setTypeFilter] = useState('All');
   const [loading, setLoading] = useState(true);
 
+  // Helper function to format salary
+  const formatSalary = (salary) => {
+    if (!salary) return '';
+    
+    // If it's already a string, return it
+    if (typeof salary === 'string') return salary;
+    
+    // If it's an object with min, max, currency
+    if (typeof salary === 'object' && salary.min && salary.max) {
+      const currency = salary.currency || '$';
+      return `${currency}${salary.min.toLocaleString()} - ${currency}${salary.max.toLocaleString()}`;
+    }
+    
+    // If it's just a number
+    if (typeof salary === 'number') {
+      return `$${salary.toLocaleString()}`;
+    }
+    
+    return String(salary);
+  };
+
   useEffect(() => {
     const loadJobs = async () => {
       if (!user || user.role !== 'candidate') {
@@ -29,9 +50,10 @@ const CandidateJobsBoard = () => {
         setAppliedJobIds(appliedIds);
 
         // Get all active jobs from all companies
-        const allJobs = Object.values(jobs).filter(job => 
-          job.details?.status === 'Active'
-        );
+        const allJobs = Object.values(jobs).filter(job => {
+          // Filter out any jobs that don't have proper details
+          return job.details && job.details.title;
+        });
         
         setAvailableJobs(allJobs);
       } catch (error) {
@@ -49,7 +71,42 @@ const CandidateJobsBoard = () => {
   const handleApplyToJob = async (jobId) => {
     try {
       const job = availableJobs.find(j => j.id === jobId);
-      if (!job) return;
+      if (!job) {
+        console.error('❌ Job not found:', jobId);
+        return;
+      }
+      
+      console.log('🎯 Applying to job:', {
+        jobId,
+        jobTitle: job.details.title,
+        companyId: job.details.companyId
+      });
+
+      // Check if user already applied to this job
+      const existingApplications = await dbHelpers.getApplicationsByCandidate(user.id);
+      const alreadyApplied = existingApplications.some(app => app.jobId === parseInt(jobId));
+      
+      if (alreadyApplied) {
+        alert('You have already applied to this job!');
+        return;
+      }
+
+      // Find the "Applied" stage for this job
+      const jobStages = await dbHelpers.getJobStages(parseInt(jobId));
+      console.log('📋 Job stages found:', jobStages);
+      
+      const appliedStage = jobStages.find(stage => 
+        stage.name.toLowerCase().includes('applied') || 
+        stage.order === 1 // If no "applied" stage, use the first stage
+      );
+      
+      if (!appliedStage) {
+        console.error('❌ No applied stage found for job:', jobId, 'Available stages:', jobStages);
+        alert('Error: No application stage found for this job. Please contact HR.');
+        return;
+      }
+      
+      console.log('🎪 Using applied stage:', appliedStage);
 
       // Create application record
       const applicationData = {
@@ -63,28 +120,54 @@ const CandidateJobsBoard = () => {
         updatedAt: new Date().toISOString()
       };
 
+      console.log('📝 Creating application:', applicationData);
       await dbHelpers.createApplication(applicationData);
 
       // Create candidate record for HR to see in kanban board
+      // Match the data structure that CandidatesPage expects
       const candidateData = {
         companyId: job.details.companyId,
         jobId: parseInt(jobId),
+        userId: user.id, // Make sure userId is set
         name: `${user.firstName} ${user.lastName}`,
         email: user.email,
         phone: user.phone || '',
-        currentStageId: `job-${jobId}-stage-applied`, // Applied stage
+        // Use both formats for compatibility
+        currentStageId: appliedStage.nodeId, // For flow diagram
+        stage: 'applied', // For Kanban board (matches CandidatesPage expected format - this is the key field!)
+        jobTitle: job.details.title, // Add job title for display
         appliedDate: new Date().toISOString(),
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        // Add additional fields that match seeded data structure
+        position: job.details.title,
+        experience: user.experience || 'Not specified',
+        skills: user.skills || [],
+        status: 'Active',
+        notes: `Applied via candidate portal on ${new Date().toLocaleDateString()}`,
+        resumeUrl: null
       };
 
-      await dbHelpers.createCandidate(candidateData, user.id);
+      console.log('👤 Creating candidate record:', candidateData);
+      const candidateId = await dbHelpers.createCandidate(candidateData, user.id);
+      console.log('✅ Candidate created with ID:', candidateId);
+      
+      // Verify the candidate was created properly
+      const createdCandidate = await dbHelpers.getCandidateById(candidateId);
+      console.log('🔍 Verification - candidate in DB:', createdCandidate);
+      
+      // Check if candidate appears in job candidates
+      const jobCandidates = await dbHelpers.getCandidatesByJob(parseInt(jobId));
+      console.log('👥 All candidates for this job:', jobCandidates);
       
       // Update applied jobs set
       setAppliedJobIds(prev => new Set([...prev, parseInt(jobId)]));
       
+      console.log('🎉 Successfully applied to job:', jobId);
+      alert(`Successfully applied to ${job.details.title}! You can view your application status in your dashboard.`);
+      
     } catch (error) {
-      console.error('Failed to apply to job:', error);
-      // TODO: Show error message to user
+      console.error('💥 Failed to apply to job:', error);
+      alert('Failed to apply to job. Please try again.');
     }
   };
 
@@ -225,7 +308,7 @@ const CandidateJobsBoard = () => {
                       {job.details.salary && (
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                           <DollarSign className="w-4 h-4 flex-shrink-0" />
-                          <span className="truncate">{job.details.salary}</span>
+                          <span className="truncate">{formatSalary(job.details.salary)}</span>
                         </div>
                       )}
                       {job.details.type && (

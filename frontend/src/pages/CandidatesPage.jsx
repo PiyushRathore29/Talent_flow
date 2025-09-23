@@ -553,10 +553,16 @@ const CandidatesPage = () => {
       // Fetch all candidates from IndexedDB for analytics and display
       const allCandidatesData = await dbHelpers.getAllCandidates();
       
+      // Normalize stage field for compatibility (some might have 'currentStage', others 'stage')
+      const normalizedCandidates = allCandidatesData.map(candidate => ({
+        ...candidate,
+        stage: candidate.stage || candidate.currentStage || 'applied' // Ensure stage field exists
+      }));
+      
       // Filter by jobId if provided
       const filteredAllCandidates = jobId 
-        ? allCandidatesData.filter(candidate => candidate.jobId === parseInt(jobId))
-        : allCandidatesData;
+        ? normalizedCandidates.filter(candidate => candidate.jobId === parseInt(jobId))
+        : normalizedCandidates;
       
       setAllCandidates(filteredAllCandidates);
       
@@ -620,9 +626,13 @@ const CandidatesPage = () => {
   }, {});
 
   // Debug logging
-  console.log('All Candidates data:', allCandidates);
-  console.log('Paginated Candidates data:', candidates);
-  console.log('Candidates by stage:', candidatesByStage);
+  console.log('All Candidates data:', allCandidates.length, 'candidates');
+  console.log('Sample candidate data structure:', allCandidates[0]);
+  console.log('Candidates by stage:', Object.keys(candidatesByStage).map(stageId => ({
+    stage: stageId,
+    count: candidatesByStage[stageId].length,
+    candidates: candidatesByStage[stageId].map(c => ({ name: c.name, stage: c.stage, currentStageId: c.currentStageId }))
+  })));
 
   if (loading) {
     return (

@@ -5,7 +5,7 @@ import Timeline, { TimelineStats } from '../components/Timeline';
 import { dbHelpers, clearAllData, initializeSampleData } from '../lib/database';
 
 const DashboardPage = () => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [stats, setStats] = useState({
     totalJobs: 0,
     activeCandidates: 0,
@@ -98,7 +98,17 @@ const DashboardPage = () => {
   return (
     <div className="min-h-screen bg-white dark:bg-black">
       {/* Hero Section */}
-      <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-black">
+      <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-black relative">
+        {/* Logout Button */}
+        <div className="absolute top-6 right-6 z-20">
+          <button
+            onClick={signOut}
+            className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white bg-gray-800/50 hover:bg-gray-700/70 border border-gray-600 rounded-lg transition-all duration-200 backdrop-blur-sm"
+          >
+            Sign Out
+          </button>
+        </div>
+        
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
             <h1 className="text-hero font-impact font-black uppercase text-white leading-none mb-4 lg:mb-8 tracking-tight">
