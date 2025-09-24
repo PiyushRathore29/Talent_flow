@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import { db } from '../lib/database.js';
+import { withLatencyAndErrors, withLatency, LATENCY_CONFIG } from './utils.js';
 
 // Helper function to calculate score for submitted assessment
 const calculateScore = (assessment, responses) => {
@@ -46,7 +47,7 @@ const calculateScore = (assessment, responses) => {
 
 export const assessmentHandlers = [
   // GET /assessments - Get all assessments
-  http.get('/api/assessments', async ({ request }) => {
+  http.get('/api/assessments', withLatency(async ({ request }) => {
     try {
       const url = new URL(request.url);
       const companyId = url.searchParams.get('companyId');
@@ -104,10 +105,10 @@ export const assessmentHandlers = [
         { status: 500 }
       );
     }
-  }),
+  }, LATENCY_CONFIG.READ)),
 
   // GET /assessments/:jobId
-  http.get('/api/assessments/:jobId', async ({ params }) => {
+  http.get('/api/assessments/:jobId', withLatency(async ({ params }) => {
     try {
       const jobId = parseInt(params.jobId);
       const assessment = await db.assessments.get(jobId);
@@ -147,10 +148,10 @@ export const assessmentHandlers = [
       console.error('❌ [MSW] Error fetching assessment:', error);
       return new HttpResponse('Failed to fetch assessment', { status: 500 });
     }
-  }),
+  }, LATENCY_CONFIG.READ)),
 
   // PUT /assessments/:jobId
-  http.put('/api/assessments/:jobId', async ({ params, request }) => {
+  http.put('/api/assessments/:jobId', withLatencyAndErrors(async ({ params, request }) => {
     try {
       const jobId = parseInt(params.jobId);
       const body = await request.json();
@@ -254,10 +255,10 @@ export const assessmentHandlers = [
       console.error('❌ [MSW] Error saving assessment:', error);
       return new HttpResponse('Failed to save assessment', { status: 500 });
     }
-  }),
+  }, LATENCY_CONFIG.WRITE)),
 
   // POST /assessments/:jobId/submit
-  http.post('/api/assessments/:jobId/submit', async ({ params, request }) => {
+  http.post('/api/assessments/:jobId/submit', withLatencyAndErrors(async ({ params, request }) => {
     try {
       const jobId = parseInt(params.jobId);
       const body = await request.json();
@@ -374,10 +375,10 @@ export const assessmentHandlers = [
       console.error('❌ [MSW] Error submitting assessment:', error);
       return new HttpResponse('Failed to submit assessment', { status: 500 });
     }
-  }),
+  }, LATENCY_CONFIG.CRITICAL)),
 
   // GET /assessments/:jobId/responses
-  http.get('/api/assessments/:jobId/responses', async ({ params, request }) => {
+  http.get('/api/assessments/:jobId/responses', withLatency(async ({ params, request }) => {
     try {
       const jobId = parseInt(params.jobId);
       const url = new URL(request.url);
@@ -435,10 +436,10 @@ export const assessmentHandlers = [
       console.error('❌ [MSW] Error fetching assessment responses:', error);
       return new HttpResponse('Failed to fetch assessment responses', { status: 500 });
     }
-  }),
+  }, LATENCY_CONFIG.READ)),
 
   // DELETE /assessments/:jobId
-  http.delete('/api/assessments/:jobId', async ({ params }) => {
+  http.delete('/api/assessments/:jobId', withLatencyAndErrors(async ({ params }) => {
     try {
       const jobId = parseInt(params.jobId);
       
@@ -479,5 +480,5 @@ export const assessmentHandlers = [
       console.error('❌ [MSW] Error deleting assessment:', error);
       return new HttpResponse('Failed to delete assessment', { status: 500 });
     }
-  })
+  }, LATENCY_CONFIG.WRITE))
 ];

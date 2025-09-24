@@ -1,32 +1,47 @@
-import React, { useState, useMemo } from 'react';
-import { DndContext, closestCenter } from '@dnd-kit/core';
-import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
-import { useCandidates } from '../hooks/useCandidates';
-import KanbanColumn from './KanbanColumn';
-import { Search, Filter, Loader } from 'lucide-react';
+import React, { useState, useMemo } from "react";
+import { DndContext, closestCenter } from "@dnd-kit/core";
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { useCandidates } from "../hooks/useCandidates";
+import KanbanColumn from "./KanbanColumn";
+import { Search, Filter, Loader } from "lucide-react";
 
-const STAGES = ['APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER', 'HIRED'];
+const STAGES = [
+  { id: "applied", name: "Applied" },
+  { id: "screen", name: "Screening" },
+  { id: "tech", name: "Technical" },
+  { id: "offer", name: "Offer" },
+  { id: "hired", name: "Hired" },
+];
 
 const CandidatesBoard = () => {
   const { candidates, moveCandidateToStage, loading } = useCandidates();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStage, setFilterStage] = useState('All');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStage, setFilterStage] = useState("All");
 
   const candidatesByStage = useMemo(() => {
     let filteredCandidates = Object.values(candidates);
 
     if (searchTerm) {
-      filteredCandidates = filteredCandidates.filter(c => 
-        c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        c.email.toLowerCase().includes(searchTerm.toLowerCase())
+      const searchLower = searchTerm.toLowerCase();
+      filteredCandidates = filteredCandidates.filter(
+        (c) =>
+          c.name.toLowerCase().includes(searchLower) ||
+          c.email.toLowerCase().includes(searchLower)
       );
     }
-    if (filterStage !== 'All') {
-      filteredCandidates = filteredCandidates.filter(c => c.currentStage === filterStage);
+    if (filterStage !== "All") {
+      filteredCandidates = filteredCandidates.filter(
+        (c) => c.currentStage === filterStage || c.stage === filterStage
+      );
     }
 
     return STAGES.reduce((acc, stage) => {
-      acc[stage] = filteredCandidates.filter(c => c.currentStage === stage);
+      acc[stage.id] = filteredCandidates.filter(
+        (c) => c.currentStage === stage.id || c.stage === stage.id
+      );
       return acc;
     }, {});
   }, [candidates, searchTerm, filterStage]);
@@ -37,10 +52,36 @@ const CandidatesBoard = () => {
 
     const candidateId = active.id;
     const newStage = over.id;
-    const oldStage = candidates[candidateId].currentStage;
+    const candidate = candidates[candidateId];
+    const oldStage = candidate.currentStage || candidate.stage;
+
+    // Don't update if already in the same stage
+    if (newStage === oldStage) return;
+
+    // Check if this is a forward movement (prevent moving backwards)
+    const currentStageIndex = STAGES.findIndex((s) => s.id === oldStage);
+    const newStageIndex = STAGES.findIndex((s) => s.id === newStage);
+
+    if (newStageIndex < currentStageIndex) {
+      console.log("❌ Cannot move candidate backwards in the pipeline");
+      alert("Cannot move candidate backwards in the pipeline");
+      return;
+    }
 
     if (newStage !== oldStage) {
-      moveCandidateToStage(candidateId, newStage, null, `Moved from ${oldStage} to ${newStage}`);
+      const stageNames = {
+        applied: "Applied",
+        screen: "Screening",
+        tech: "Technical",
+        offer: "Offer",
+        hired: "Hired",
+      };
+      moveCandidateToStage(
+        candidateId,
+        newStage,
+        null,
+        `Moved from ${stageNames[oldStage]} to ${stageNames[newStage]}`
+      );
     }
   };
 
@@ -51,7 +92,9 @@ const CandidatesBoard = () => {
           <div className="flex items-center justify-center py-12">
             <div className="flex items-center gap-3">
               <Loader className="w-6 h-6 animate-spin text-primary-600" />
-              <span className="text-lg text-gray-600">Loading candidates...</span>
+              <span className="text-lg text-gray-600">
+                Loading candidates...
+              </span>
             </div>
           </div>
         </div>
@@ -63,8 +106,12 @@ const CandidatesBoard = () => {
     <div className="px-4 sm:px-8 lg:px-24 py-8">
       <div className="max-w-screen-2xl mx-auto">
         <div className="mb-8">
-            <h1 className="text-heading font-impact font-black uppercase text-primary-500">Candidates Board</h1>
-            <p className="mt-2 text-body text-primary-500/70">Manage all candidates across all job openings.</p>
+          <h1 className="text-heading font-impact font-black uppercase text-primary-500">
+            Candidates Board
+          </h1>
+          <p className="mt-2 text-body text-primary-500/70">
+            Manage all candidates across all job openings.
+          </p>
         </div>
         <div className="flex flex-wrap gap-4 mb-8 p-4 bg-white rounded-lg shadow-sm border">
           <div className="relative flex-grow md:flex-grow-0 md:w-72">
@@ -85,20 +132,30 @@ const CandidatesBoard = () => {
               className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-primary-400 bg-gray-50/50 appearance-none"
             >
               <option value="All">All Stages</option>
-              {STAGES.map(stage => <option key={stage} value={stage}>{stage}</option>)}
+              {STAGES.map((stage) => (
+                <option key={stage.id} value={stage.id}>
+                  {stage.name}
+                </option>
+              ))}
             </select>
           </div>
         </div>
 
-        <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={STAGES} strategy={horizontalListSortingStrategy}>
+        <DndContext
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={STAGES.map((s) => s.id)}
+            strategy={horizontalListSortingStrategy}
+          >
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-              {STAGES.map(stage => (
+              {STAGES.map((stage) => (
                 <KanbanColumn
-                  key={stage}
-                  id={stage}
-                  title={stage}
-                  candidates={candidatesByStage[stage]}
+                  key={stage.id}
+                  id={stage.id}
+                  title={stage.name}
+                  candidates={candidatesByStage[stage.id]}
                 />
               ))}
             </div>

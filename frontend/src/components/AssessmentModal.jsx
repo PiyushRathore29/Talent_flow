@@ -79,20 +79,20 @@ const QuestionEditor = ({ question, onUpdate, onDelete, index }) => {
   const TypeIcon = QUESTION_TYPE_CONFIG[localQuestion.questionType]?.icon || Type;
 
   return (
-    <div className="border rounded-lg p-4 bg-white">
+    <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 bg-white dark:bg-gray-800 transition-colors duration-200">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <TypeIcon className="w-5 h-5 text-gray-500" />
-          <span className="font-medium text-gray-700">
+          <TypeIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+          <span className="font-medium text-gray-700 dark:text-gray-300">
             Question {index + 1}
           </span>
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-gray-500 dark:text-gray-400">
             ({QUESTION_TYPE_CONFIG[localQuestion.questionType]?.label})
           </span>
         </div>
         <button
           onClick={() => onDelete(index)}
-          className="text-red-500 hover:text-red-700 p-1"
+          className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1 transition-colors duration-200"
         >
           <Trash2 className="w-4 h-4" />
         </button>
@@ -101,27 +101,27 @@ const QuestionEditor = ({ question, onUpdate, onDelete, index }) => {
       <div className="space-y-4">
         {/* Question Title */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Question Title *
           </label>
           <input
             type="text"
             value={localQuestion.title || ''}
             onChange={(e) => updateField('title', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-200"
             placeholder="Enter your question"
           />
         </div>
 
         {/* Question Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Description (Optional)
           </label>
           <textarea
             value={localQuestion.description || ''}
             onChange={(e) => updateField('description', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-200"
             rows="2"
             placeholder="Additional context or instructions"
           />
@@ -130,8 +130,8 @@ const QuestionEditor = ({ question, onUpdate, onDelete, index }) => {
         {/* Options for Choice Questions */}
         {localQuestion.questionType === QUESTION_TYPES.MULTIPLE_CHOICE && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Options * <span className="text-xs text-gray-500">(Select the correct answer)</span>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Options * <span className="text-xs text-gray-500 dark:text-gray-400">(Select the correct answer)</span>
             </label>
             <div className="space-y-2">
               {(localQuestion.options || []).map((option, optionIndex) => (
@@ -147,18 +147,18 @@ const QuestionEditor = ({ question, onUpdate, onDelete, index }) => {
                       });
                       updateField('options', newOptions);
                     }}
-                    className="text-green-600"
+                    className="text-green-600 dark:text-green-500 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:ring-green-500 dark:focus:ring-green-400"
                   />
                   <input
                     type="text"
                     value={typeof option === 'object' ? option.text : option}
                     onChange={(e) => updateOption(optionIndex, e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-200"
                     placeholder={`Option ${optionIndex + 1}`}
                   />
                   <button
                     onClick={() => removeOption(optionIndex)}
-                    className="text-red-500 hover:text-red-700 p-1"
+                    className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1 transition-colors duration-200"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -166,7 +166,7 @@ const QuestionEditor = ({ question, onUpdate, onDelete, index }) => {
               ))}
               <button
                 onClick={addOption}
-                className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm"
+                className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm transition-colors duration-200"
               >
                 <Plus className="w-4 h-4" />
                 Add Option
@@ -179,7 +179,7 @@ const QuestionEditor = ({ question, onUpdate, onDelete, index }) => {
         {localQuestion.questionType === QUESTION_TYPES.NUMERIC && (
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Minimum Value
               </label>
               <input
@@ -189,11 +189,11 @@ const QuestionEditor = ({ question, onUpdate, onDelete, index }) => {
                   ...localQuestion.validation, 
                   min: parseFloat(e.target.value) || undefined 
                 })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-200"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Maximum Value
               </label>
               <input
@@ -203,7 +203,7 @@ const QuestionEditor = ({ question, onUpdate, onDelete, index }) => {
                   ...localQuestion.validation, 
                   max: parseFloat(e.target.value) || undefined 
                 })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-200"
               />
             </div>
           </div>
@@ -213,7 +213,7 @@ const QuestionEditor = ({ question, onUpdate, onDelete, index }) => {
         {(localQuestion.questionType === QUESTION_TYPES.SHORT_TEXT || 
           localQuestion.questionType === QUESTION_TYPES.LONG_TEXT) && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Maximum Length (characters)
             </label>
             <input
@@ -223,7 +223,7 @@ const QuestionEditor = ({ question, onUpdate, onDelete, index }) => {
                 ...localQuestion.validation, 
                 maxLength: parseInt(e.target.value) || undefined 
               })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-200"
               placeholder="Leave empty for no limit"
             />
           </div>
@@ -232,7 +232,7 @@ const QuestionEditor = ({ question, onUpdate, onDelete, index }) => {
         {/* File Upload Settings */}
         {localQuestion.questionType === QUESTION_TYPES.FILE_UPLOAD && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Accepted File Types
             </label>
             <input
@@ -242,7 +242,7 @@ const QuestionEditor = ({ question, onUpdate, onDelete, index }) => {
                 ...localQuestion.validation, 
                 fileTypes: e.target.value 
               })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-200"
               placeholder="e.g., .pdf,.doc,.docx"
             />
           </div>
@@ -255,9 +255,9 @@ const QuestionEditor = ({ question, onUpdate, onDelete, index }) => {
             id={`required-${index}`}
             checked={localQuestion.isRequired || false}
             onChange={(e) => updateField('isRequired', e.target.checked)}
-            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            className="rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-blue-600 dark:text-blue-500 focus:ring-blue-500 dark:focus:ring-blue-400"
           />
-          <label htmlFor={`required-${index}`} className="text-sm text-gray-700">
+          <label htmlFor={`required-${index}`} className="text-sm text-gray-700 dark:text-gray-300">
             Required question
           </label>
         </div>
@@ -266,15 +266,15 @@ const QuestionEditor = ({ question, onUpdate, onDelete, index }) => {
         <div>
           <button
             onClick={() => setShowConditional(!showConditional)}
-            className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
+            className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors duration-200"
           >
             {showConditional ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             {showConditional ? 'Hide' : 'Add'} Conditional Logic
           </button>
           
           {showConditional && (
-            <div className="mt-2 p-3 bg-gray-50 rounded-md">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-md transition-colors duration-200">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Show this question only if:
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -284,7 +284,7 @@ const QuestionEditor = ({ question, onUpdate, onDelete, index }) => {
                     ...localQuestion.conditionalLogic,
                     questionIndex: parseInt(e.target.value)
                   })}
-                  className="px-2 py-1 border border-gray-300 rounded text-sm"
+                  className="px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded text-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-200"
                 >
                   <option value="">Select question</option>
                   {/* This would be populated with previous questions */}
@@ -295,7 +295,7 @@ const QuestionEditor = ({ question, onUpdate, onDelete, index }) => {
                     ...localQuestion.conditionalLogic,
                     operator: e.target.value
                   })}
-                  className="px-2 py-1 border border-gray-300 rounded text-sm"
+                  className="px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded text-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-200"
                 >
                   <option value="equals">equals</option>
                   <option value="not_equals">does not equal</option>
@@ -308,7 +308,7 @@ const QuestionEditor = ({ question, onUpdate, onDelete, index }) => {
                     ...localQuestion.conditionalLogic,
                     value: e.target.value
                   })}
-                  className="px-2 py-1 border border-gray-300 rounded text-sm"
+                  className="px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded text-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-200"
                   placeholder="Value"
                 />
               </div>
@@ -421,24 +421,24 @@ const AssessmentModal = ({ isOpen, onClose, onSave, assessment }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col transition-colors duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-3">
-            <FileText className="w-6 h-6 text-orange-600" />
-            <h2 className="text-2xl font-bold text-gray-900">
+            <FileText className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
               {assessment ? 'Edit Assessment' : 'Create Assessment'}
             </h2>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowPreview(!showPreview)}
-              className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors duration-200"
             >
               <Eye className="w-4 h-4" />
               {showPreview ? 'Edit' : 'Preview'}
             </button>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
+            <button onClick={onClose} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-1 transition-colors duration-200">
               <X className="w-6 h-6" />
             </button>
           </div>
@@ -451,51 +451,51 @@ const AssessmentModal = ({ isOpen, onClose, onSave, assessment }) => {
               {/* Basic Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Assessment Title *
                   </label>
                   <input
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 dark:focus:ring-orange-400 transition-colors duration-200"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Time Limit (minutes)
                   </label>
                   <input
                     type="number"
                     value={timeLimit}
                     onChange={(e) => setTimeLimit(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 dark:focus:ring-orange-400 transition-colors duration-200"
                     placeholder="Leave empty for no limit"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Description
                 </label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 dark:focus:ring-orange-400 transition-colors duration-200"
                   rows="2"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Instructions for Candidates
                 </label>
                 <textarea
                   value={instructions}
                   onChange={(e) => setInstructions(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 dark:focus:ring-orange-400 transition-colors duration-200"
                   rows="3"
                   placeholder="Provide clear instructions on how to complete the assessment..."
                 />
@@ -503,14 +503,14 @@ const AssessmentModal = ({ isOpen, onClose, onSave, assessment }) => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Passing Score (%)
                   </label>
                   <input
                     type="number"
                     value={passingScore}
                     onChange={(e) => setPassingScore(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 dark:focus:ring-orange-400 transition-colors duration-200"
                     min="0"
                     max="100"
                   />
@@ -521,16 +521,16 @@ const AssessmentModal = ({ isOpen, onClose, onSave, assessment }) => {
                       type="checkbox"
                       checked={isRequired}
                       onChange={(e) => setIsRequired(e.target.checked)}
-                      className="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                      className="rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-orange-600 dark:text-orange-500 focus:ring-orange-500 dark:focus:ring-orange-400"
                     />
-                    <span className="text-sm text-gray-700">Required for progression</span>
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Required for progression</span>
                   </label>
                 </div>
               </div>
 
               {/* Question Types */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                   Add Questions
                 </label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
@@ -541,11 +541,11 @@ const AssessmentModal = ({ isOpen, onClose, onSave, assessment }) => {
                         key={type}
                         type="button"
                         onClick={() => addQuestion(type)}
-                        className="flex flex-col items-center p-3 border border-gray-200 rounded-lg hover:border-orange-300 hover:bg-orange-50 transition-colors"
+                        className="flex flex-col items-center p-3 border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 rounded-lg hover:border-orange-300 dark:hover:border-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors duration-200"
                       >
-                        <Icon className="w-5 h-5 text-gray-600 mb-1" />
-                        <span className="text-xs font-medium text-gray-700">{config.label}</span>
-                        <span className="text-xs text-gray-500">{config.description}</span>
+                        <Icon className="w-5 h-5 text-gray-600 dark:text-gray-400 mb-1" />
+                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{config.label}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">{config.description}</span>
                       </button>
                     );
                   })}
@@ -555,7 +555,7 @@ const AssessmentModal = ({ isOpen, onClose, onSave, assessment }) => {
               {/* Questions */}
               {questions.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                     Questions ({questions.length})
                   </h3>
                   <div className="space-y-4">
@@ -665,17 +665,17 @@ const AssessmentModal = ({ isOpen, onClose, onSave, assessment }) => {
 
         {/* Footer */}
         {!showPreview && (
-          <div className="border-t p-6 flex justify-end gap-4">
+          <div className="border-t border-gray-200 dark:border-gray-700 p-6 flex justify-end gap-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              className="px-6 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
             >
               Cancel
             </button>
             <button
               onClick={handleSubmit}
-              className="px-6 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
+              className="px-6 py-2 bg-orange-600 dark:bg-orange-500 text-white rounded-md hover:bg-orange-700 dark:hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
               disabled={!title.trim() || questions.length === 0}
             >
               {assessment ? 'Update Assessment' : 'Create Assessment'}

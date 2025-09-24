@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import { db } from '../lib/database.js';
+import { withLatencyAndErrors, withLatency, LATENCY_CONFIG } from './utils.js';
 
 // Helper function to get candidates with pagination
 const getCandidatesFromDB = async (params = {}) => {
@@ -59,7 +60,7 @@ const getCandidatesFromDB = async (params = {}) => {
 
 export const candidateHandlers = [
   // GET /candidates?search=&stage=&page=&jobId=
-  http.get('/api/candidates', async ({ request }) => {
+  http.get('/api/candidates', withLatency(async ({ request }) => {
     try {
       const url = new URL(request.url);
       const searchParams = url.searchParams;
@@ -85,10 +86,10 @@ export const candidateHandlers = [
       console.error('❌ [MSW] Error fetching candidates:', error);
       return new HttpResponse('Failed to fetch candidates', { status: 500 });
     }
-  }),
+  }, LATENCY_CONFIG.READ)),
 
   // GET /candidates/:id
-  http.get('/api/candidates/:id', async ({ params }) => {
+  http.get('/api/candidates/:id', withLatency(async ({ params }) => {
     try {
       const candidateId = parseInt(params.id);
       const candidate = await db.candidates.get(candidateId);
@@ -118,10 +119,10 @@ export const candidateHandlers = [
       console.error('❌ [MSW] Error fetching candidate:', error);
       return new HttpResponse('Failed to fetch candidate', { status: 500 });
     }
-  }),
+  }, LATENCY_CONFIG.READ)),
 
   // POST /candidates
-  http.post('/api/candidates', async ({ request }) => {
+  http.post('/api/candidates', withLatencyAndErrors(async ({ request }) => {
     try {
       const newCandidate = await request.json();
       
@@ -153,10 +154,10 @@ export const candidateHandlers = [
       console.error('❌ [MSW] Error creating candidate:', error);
       return new HttpResponse('Failed to create candidate', { status: 500 });
     }
-  }),
+  }, LATENCY_CONFIG.WRITE)),
 
   // PUT /candidates/:id
-  http.put('/api/candidates/:id', async ({ params, request }) => {
+  http.put('/api/candidates/:id', withLatencyAndErrors(async ({ params, request }) => {
     try {
       const candidateId = parseInt(params.id);
       const updates = await request.json();
@@ -192,10 +193,10 @@ export const candidateHandlers = [
       console.error('❌ [MSW] Error updating candidate (PUT):', error);
       return new HttpResponse('Failed to update candidate', { status: 500 });
     }
-  }),
+  }, LATENCY_CONFIG.WRITE)),
 
   // PATCH /candidates/:id
-  http.patch('/api/candidates/:id', async ({ params, request }) => {
+  http.patch('/api/candidates/:id', withLatencyAndErrors(async ({ params, request }) => {
     try {
       const candidateId = parseInt(params.id);
       const updates = await request.json();
@@ -231,10 +232,10 @@ export const candidateHandlers = [
       console.error('❌ [MSW] Error updating candidate:', error);
       return new HttpResponse('Failed to update candidate', { status: 500 });
     }
-  }),
+  }, LATENCY_CONFIG.WRITE)),
 
   // DELETE /candidates/:id
-  http.delete('/api/candidates/:id', async ({ params }) => {
+  http.delete('/api/candidates/:id', withLatencyAndErrors(async ({ params }) => {
     try {
       const candidateId = parseInt(params.id);
       
@@ -257,10 +258,10 @@ export const candidateHandlers = [
       console.error('❌ [MSW] Error deleting candidate:', error);
       return new HttpResponse('Failed to delete candidate', { status: 500 });
     }
-  }),
+  }, LATENCY_CONFIG.WRITE)),
 
   // GET /candidates/:id/timeline
-  http.get('/api/candidates/:id/timeline', async ({ params }) => {
+  http.get('/api/candidates/:id/timeline', withLatency(async ({ params }) => {
     try {
       const candidateId = parseInt(params.id);
       
@@ -321,7 +322,7 @@ export const candidateHandlers = [
       console.error('❌ [MSW] Error fetching candidate timeline:', error);
       return new HttpResponse('Failed to fetch timeline', { status: 500 });
     }
-  })
+  }, LATENCY_CONFIG.READ))
 ];
 
 // Helper function to get stage ID from stage name

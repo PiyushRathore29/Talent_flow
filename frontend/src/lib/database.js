@@ -5,7 +5,7 @@ export class TalentFlowDB extends Dexie {
   constructor() {
     super('TalentFlowDB');
     
-    this.version(6).stores({
+    this.version(7).stores({
       // Authentication & Users
       users: '++id, email, &username, companyId, role, createdAt, lastLogin',
       companies: '++id, &name, domain, createdAt',
@@ -27,16 +27,16 @@ export class TalentFlowDB extends Dexie {
       applications: '++id, jobId, candidateId, candidateName, candidateEmail, status, appliedAt, createdAt, updatedAt',
       
       // Enhanced Assessment System
-      assessments: '++id, jobId, stageId, companyId, title, description, instructions, timeLimit, passingScore, isRequired, settings, createdById, createdAt, updatedAt',
-      assessmentQuestions: '++id, assessmentId, questionType, title, description, options, validation, conditionalLogic, order, isRequired, createdAt',
+      assessments: '++id, jobId, title, description, sections, settings, status, createdById, createdAt, updatedAt',
+      assessmentSections: '++id, assessmentId, title, description, order, createdAt',
+      assessmentQuestions: '++id, assessmentId, sectionId, type, title, description, options, validation, required, order, createdAt',
       assessmentResponses: '++id, assessmentId, candidateId, questionResponses, submittedAt, timeTaken, score, isCompleted, startedAt',
       assessmentAttempts: '++id, assessmentId, candidateId, attemptNumber, responses, submittedAt, score, timeSpent, isCompleted',
       
       // Application Settings
       appSettings: '++id, userId, companyId, settings, updatedAt'
     }).upgrade(trans => {
-      // Migration from version 5 to 6: Add comprehensive timeline system
-      console.log('Upgraded database to version 6: Added comprehensive timeline system for tracking all candidate activities');
+      // Migration from version 6 to 7: Enhanced assessment system with structured sections and questions
     });
   }
 }
@@ -157,12 +157,10 @@ export const dbHelpers = {
   async updateJob(id, updates) {
     // Ensure ID is always a number
     const numericId = typeof id === 'string' ? parseInt(id) : id;
-    console.log('🗄️ Database: updateJob called with ID:', numericId, 'type:', typeof numericId);
     
     try {
       // First, check if the job exists
       const existingJob = await db.jobs.get(numericId);
-      console.log('🗄️ Database: Existing job before update:', existingJob);
       
       if (!existingJob) {
         console.error('🗄️ Database: Job not found with ID:', numericId);
@@ -170,12 +168,6 @@ export const dbHelpers = {
       }
       
       const result = await db.jobs.update(numericId, { ...updates, updatedAt: new Date() });
-      console.log('🗄️ Database: updateJob result:', result);
-      
-      // Verify the update worked
-      const updatedJob = await db.jobs.get(numericId);
-      console.log('🗄️ Database: Job after update:', updatedJob);
-      console.log('🗄️ Database: Job flowData after update:', updatedJob?.flowData);
       
       return result;
     } catch (error) {
@@ -185,13 +177,10 @@ export const dbHelpers = {
   },
 
   async updateJobOrder(jobId, newOrder) {
-    console.log('🗄️ Database: Updating job order - ID:', jobId, 'New Order:', newOrder);
     return await this.updateJob(jobId, { order: newOrder });
   },
 
   async reorderJobs(jobsWithNewOrders) {
-    console.log('🗄️ Database: Reordering jobs:', jobsWithNewOrders);
-    
     try {
       await db.transaction('rw', db.jobs, async () => {
         for (const { id, order } of jobsWithNewOrders) {
@@ -199,7 +188,6 @@ export const dbHelpers = {
         }
       });
       
-      console.log('🗄️ Database: Jobs reordered successfully');
       return true;
     } catch (error) {
       console.error('🗄️ Database: Failed to reorder jobs:', error);
@@ -219,15 +207,12 @@ export const dbHelpers = {
 
   // Job Stages
   async createJobStage(stageData) {
-    console.log('🗄️ Database: Attempting to create job stage:', stageData);
     try {
       const stage = {
         ...stageData,
         createdAt: new Date()
       };
-      console.log('🗄️ Database: Final stage object before save:', stage);
       const result = await db.jobStages.add(stage);
-      console.log('🗄️ Database: Stage successfully saved, returned ID:', result);
       return result;
     } catch (error) {
       console.error('🗄️ Database ERROR: Failed to create job stage:', error);
@@ -236,11 +221,9 @@ export const dbHelpers = {
   },
 
   async getJobStages(jobId) {
-    console.log('🗄️ Database: Fetching stages for job ID:', jobId);
     try {
       const stages = await db.jobStages.where('jobId').equals(jobId).toArray();
       const sortedStages = stages.sort((a, b) => a.order - b.order);
-      console.log('🗄️ Database: Found stages:', sortedStages);
       return sortedStages;
     } catch (error) {
       console.error('🗄️ Database ERROR: Failed to get job stages:', error);
@@ -317,9 +300,7 @@ export const dbHelpers = {
   },
 
   async getCandidatesByJob(jobId) {
-    console.log('🔍 [DB] Getting candidates for job:', jobId);
     const candidates = await db.candidates.where('jobId').equals(jobId).toArray();
-    console.log('🔍 [DB] Found candidates:', candidates.length, candidates);
     
     // Fetch user data for each candidate
     const candidatesWithUserData = await Promise.all(
@@ -343,7 +324,6 @@ export const dbHelpers = {
       })
     );
     
-    console.log('🔍 [DB] Candidates with user data:', candidatesWithUserData);
     return candidatesWithUserData;
   },
 
@@ -475,13 +455,17 @@ export const dbHelpers = {
   async addCandidateNote(noteData) {
     const note = {
       ...noteData,
-      createdAt: new Date()
+      createdAt: noteData.createdAt || new Date().toISOString()
     };
-    return await db.candidateNotes.add(note);
+    const result = await db.candidateNotes.add(note);
+    return result;
   },
 
   async getCandidateNotes(candidateId) {
-    return await db.candidateNotes.where('candidateId').equals(candidateId).orderBy('createdAt').toArray();
+    const notes = await db.candidateNotes.where('candidateId').equals(candidateId).toArray();
+    // Sort by createdAt in descending order (newest first)
+    const sortedNotes = notes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    return sortedNotes;
   },
 
   // Assessment Management
@@ -690,11 +674,8 @@ export const initializeSampleData = async () => {
     const userCount = await db.users.count();
     
     if (userCount > 0) {
-      console.log('Sample data already exists, skipping initialization');
       return;
     }
-    
-    console.log('Initializing sample data...');
     
     // Use transaction to ensure atomicity
     await db.transaction('rw', [db.companies, db.users, db.jobs, db.jobStages, db.candidates, db.timeline], async () => {
@@ -996,14 +977,13 @@ export const initializeSampleData = async () => {
       }
     });
     
-    console.log('Sample data initialized successfully');
   } catch (error) {
     console.error('Error initializing sample data:', error);
     // Clear potentially corrupted data and try to recover
     try {
       const userCount = await db.users.count();
       if (userCount === 0) {
-        console.log('No data was created, safe to continue');
+        // No data was created, safe to continue
       }
     } catch (recoveryError) {
       console.error('Error during recovery check:', recoveryError);
@@ -1045,7 +1025,6 @@ export const clearAllData = async () => {
         db.appSettings.clear()
       ]);
     });
-    console.log('All data cleared successfully');
   } catch (error) {
     console.error('Error clearing data:', error);
     throw error;

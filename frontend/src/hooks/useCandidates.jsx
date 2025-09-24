@@ -96,7 +96,7 @@ export const CandidateProvider = ({ children }) => {
   const moveCandidateToStage = useCallback(async (candidateId, newStage, actor = null, note = '') => {
     try {
       const candidate = candidates[candidateId];
-      if (!candidate || candidate.currentStageId === newStage) return;
+      if (!candidate || candidate.currentStage === newStage || candidate.stage === newStage) return;
 
       // Use the database helper function to update stage and create history
       await dbHelpers.moveCandidateToStage(candidateId, newStage, user?.id, note);
@@ -113,6 +113,8 @@ export const CandidateProvider = ({ children }) => {
 
       const updatedHistory = [...(candidate.history || []), historyEntry];
       const updates = {
+        currentStage: newStage,
+        stage: newStage, // Keep both for compatibility
         currentStageId: newStage, // Use currentStageId to match database schema
         history: updatedHistory,
         updatedAt: new Date().toISOString()

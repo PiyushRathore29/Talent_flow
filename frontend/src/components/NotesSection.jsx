@@ -1,172 +1,194 @@
-import React, { useState, useRef } from 'react';
-import { useCandidates } from '../hooks/useCandidates';
-import { teamMembers } from '../data/candidatesData';
-import { Send, AtSign } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { MessageSquare, AtSign, Clock } from 'lucide-react';
 
-const NotesSection = ({ candidate }) => {
-  const [noteText, setNoteText] = useState('');
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [suggestions, setSuggestions] = useState([]);
-  const [cursorPosition, setCursorPosition] = useState(0);
-  const textareaRef = useRef(null);
-  const { addNoteToCandidate } = useCandidates();
+// Same HR users as in NotesModal for consistency
+const HR_USERS = [
+  { id: 1, name: 'JohanSeong3342', displayName: 'Johan Seong', role: 'Senior HR Manager' },
+  { id: 2, name: 'SarahWilsonHR', displayName: 'Sarah Wilson', role: 'HR Specialist' },
+  { id: 3, name: 'MikeJohnsonHR', displayName: 'Mike Johnson', role: 'Talent Acquisition' },
+  { id: 4, name: 'LisaChenHR', displayName: 'Lisa Chen', role: 'HR Director' },
+  { id: 5, name: 'AlexRodriguezHR', displayName: 'Alex Rodriguez', role: 'Recruiter' },
+  { id: 6, name: 'EmilyDavisHR', displayName: 'Emily Davis', role: 'HR Coordinator' },
+  { id: 7, name: 'DavidWilliamsHR', displayName: 'David Williams', role: 'Senior Recruiter' },
+  { id: 8, name: 'JessicaBrownHR', displayName: 'Jessica Brown', role: 'HR Business Partner' }
+];
 
-  const handleInputChange = (e) => {
-    const text = e.target.value;
-    const cursor = e.target.selectionStart;
-    setNoteText(text);
-    setCursorPosition(cursor);
+const NotesSection = ({ candidateId }) => {
+  const [notes, setNotes] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-    // Find @ mentions
-    const lastAt = text.lastIndexOf('@', cursor - 1);
-    if (lastAt !== -1) {
-      const textAfterAt = text.substring(lastAt + 1, cursor);
-      if (!textAfterAt.includes(' ') && !textAfterAt.includes('@')) {
-        const query = textAfterAt.toLowerCase();
-        const filteredMembers = teamMembers.filter(member => 
-          member.name.toLowerCase().includes(query)
+  useEffect(() => {
+    fetchNotes();
+  }, [candidateId]);
+
+  const fetchNotes = async () => {
+    try {
+      setLoading(true);
+      const { dbHelpers } = await import('../lib/database');
+      console.log('📝 [NotesSection] Fetching notes for candidate:', candidateId);
+      const candidateNotes = await dbHelpers.getCandidateNotes(parseInt(candidateId));
+      console.log('📝 [NotesSection] Raw notes from DB:', candidateNotes);
+      
+      // Sort by creation date (newest first)
+      const sortedNotes = candidateNotes.sort((a, b) => 
+        new Date(b.createdAt) - new Date(a.createdAt)
+      );
+      
+      console.log('📝 [NotesSection] Sorted notes:', sortedNotes);
+      setNotes(sortedNotes);
+    } catch (error) {
+      console.error('❌ [NotesSection] Failed to fetch notes:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderNoteText = (text) => {
+    // Replace mentions with highlighted spans
+    const parts = text.split(/(@\w+)/g);
+    return parts.map((part, index) => {
+      if (part.startsWith('@')) {
+        const username = part.substring(1);
+        const user = HR_USERS.find(u => u.name === username);
+        return (
+          <span
+            key={index}
+            className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 px-1 rounded font-medium inline-flex items-center gap-1"
+            title={user ? `${user.displayName} (${user.role})` : username}
+          >
+            <AtSign className="w-3 h-3" />
+            {user ? user.displayName : username}
+          </span>
         );
-        setSuggestions(filteredMembers);
-        setShowSuggestions(filteredMembers.length > 0 && query.length >= 0);
-      } else {
-        setShowSuggestions(false);
       }
-    } else {
-      setShowSuggestions(false);
-    }
-  };
-
-  const handleSuggestionClick = (member) => {
-    const lastAt = noteText.lastIndexOf('@', cursorPosition - 1);
-    const beforeAt = noteText.substring(0, lastAt);
-    const afterCursor = noteText.substring(cursorPosition);
-    const newText = `${beforeAt}@${member.name} ${afterCursor}`;
-    
-    setNoteText(newText);
-    setShowSuggestions(false);
-    
-    // Focus and set cursor position
-    setTimeout(() => {
-      textareaRef.current.focus();
-      const newCursorPos = beforeAt.length + member.name.length + 2;
-      textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
-    }, 0);
-  };
-
-  const extractMentions = (text) => {
-    const mentionRegex = /@([A-Za-z]+\s[A-Za-z]+)/g;
-    const mentions = [];
-    let match;
-    
-    while ((match = mentionRegex.exec(text)) !== null) {
-      const mentionedName = match[1];
-      const member = teamMembers.find(m => m.name === mentionedName);
-      if (member) {
-        mentions.push(member.id);
-      }
-    }
-    
-    return mentions;
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (noteText.trim()) {
-      const mentions = extractMentions(noteText);
-      addNoteToCandidate(candidate.id, {
-        text: noteText,
-        author: 'HR Manager', // In a real app, this would be the current user
-        date: new Date().toISOString().split('T')[0],
-        mentions
-      });
-      setNoteText('');
-    }
-  };
-
-  const renderNoteText = (text, mentions) => {
-    if (!mentions || mentions.length === 0) {
-      return text.replace(/@([A-Za-z]+\s[A-Za-z]+)/g, '<span class="text-primary-600 font-medium">@$1</span>');
-    }
-    
-    return text.replace(/@([A-Za-z]+\s[A-Za-z]+)/g, (match, name) => {
-      const member = teamMembers.find(m => m.name === name);
-      if (member && mentions.includes(member.id)) {
-        return `<span class="text-primary-600 font-medium hover:text-primary-700 cursor-pointer" title="${member.role} - ${member.email}">@${name}</span>`;
-      }
-      return `<span class="text-primary-600 font-medium">@${name}</span>`;
+      return part;
     });
   };
 
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMs = now - date;
+    const diffInHours = diffInMs / (1000 * 60 * 60);
+    const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
+
+    if (diffInHours < 1) {
+      const minutes = Math.floor(diffInMs / (1000 * 60));
+      return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`;
+    } else if (diffInHours < 24) {
+      const hours = Math.floor(diffInHours);
+      return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+    } else if (diffInDays < 7) {
+      const days = Math.floor(diffInDays);
+      return `${days} day${days !== 1 ? 's' : ''} ago`;
+    } else {
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white dark:bg-black rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-6 transition-colors duration-200">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-impact font-bold uppercase text-primary-500 dark:text-primary-400 tracking-tight">
+            Notes & Comments
+          </h3>
+        </div>
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div>
-      <h2 className="text-xl font-bold font-inter text-primary-500 mb-6">Internal Notes</h2>
-      
-      {candidate.notes.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          <AtSign className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-          <p>No notes yet. Add the first note below.</p>
+    <div className="bg-white dark:bg-black rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-6 transition-colors duration-200">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-impact font-bold uppercase text-primary-500 dark:text-primary-400 tracking-tight">
+          Notes & Comments
+        </h3>
+        <div className="text-sm text-gray-500 dark:text-gray-400">
+          {notes.length} note{notes.length !== 1 ? 's' : ''}
+        </div>
+      </div>
+
+      {notes.length === 0 ? (
+        <div className="text-center py-8">
+          <MessageSquare className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+          <p className="text-gray-500 dark:text-gray-400 mb-2">No notes yet</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500">
+            Click "Add Note" to start documenting your thoughts about this candidate
+          </p>
         </div>
       ) : (
-        <div className="space-y-6 mb-8">
-          {candidate.notes.map(note => (
-            <div key={note.id} className="bg-primary-50 p-4 rounded-lg border border-primary-100">
-              <p 
-                className="text-gray-800 leading-relaxed" 
-                dangerouslySetInnerHTML={{ 
-                  __html: renderNoteText(note.text, note.mentions) 
-                }}
-              />
-              <div className="flex justify-between items-center mt-3 pt-3 border-t border-primary-200">
-                <span className="text-sm font-medium text-primary-600">{note.author}</span>
-                <time className="text-xs text-gray-500">
-                  {new Date(note.date).toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: 'short', 
-                    day: 'numeric' 
-                  })}
-                </time>
+        <div className="space-y-4 max-h-96 overflow-y-auto">
+          {notes.map((note) => (
+            <div
+              key={note.id}
+              className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700"
+            >
+              {/* Note Header */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-blue-600 dark:bg-blue-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-sm font-medium">
+                      {note.authorName?.charAt(0) || 'H'}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-900 dark:text-white text-sm">
+                      {note.authorName || 'HR User'}
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                      <Clock className="w-3 h-3" />
+                      {formatDate(note.createdAt)}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Mention count indicator */}
+                {note.mentions && note.mentions.length > 0 && (
+                  <div className="flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded text-xs">
+                    <AtSign className="w-3 h-3" />
+                    {note.mentions.length} mention{note.mentions.length !== 1 ? 's' : ''}
+                  </div>
+                )}
               </div>
+
+              {/* Note Content */}
+              <div className="text-gray-800 dark:text-gray-200 text-sm leading-relaxed">
+                {renderNoteText(note.text)}
+              </div>
+
+              {/* Mentioned Users Summary (if any) */}
+              {note.mentions && note.mentions.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                    Mentioned:
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {note.mentions.map((mention, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-xs"
+                      >
+                        <AtSign className="w-3 h-3" />
+                        {mention.displayName || mention.username}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
       )}
-
-      <form onSubmit={handleSubmit} className="relative">
-        <div className="relative">
-          <textarea
-            ref={textareaRef}
-            value={noteText}
-            onChange={handleInputChange}
-            onSelect={(e) => setCursorPosition(e.target.selectionStart)}
-            rows="4"
-            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-400 resize-none"
-            placeholder="Add a note... Type @ to mention a team member."
-          />
-          <button 
-            type="submit" 
-            disabled={!noteText.trim()}
-            className="absolute top-3 right-3 text-gray-400 hover:text-primary-400 transition-colors disabled:text-gray-300 disabled:cursor-not-allowed"
-          >
-            <Send className="w-5 h-5" />
-          </button>
-        </div>
-        
-        {showSuggestions && (
-          <div className="absolute bottom-full mb-2 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
-            <div className="p-2 text-xs text-gray-500 font-medium border-b">Team Members</div>
-            {suggestions.map(member => (
-              <div
-                key={member.id}
-                onClick={() => handleSuggestionClick(member)}
-                className="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
-              >
-                <div className="font-medium text-gray-900">{member.name}</div>
-                <div className="text-sm text-gray-500">{member.role}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </form>
     </div>
   );
 };

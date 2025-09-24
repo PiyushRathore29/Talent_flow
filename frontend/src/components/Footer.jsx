@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 const Footer = () => {
   return (
@@ -20,16 +20,28 @@ const Footer = () => {
                   (Navigate)
                 </p>
                 <div className="flex flex-col gap-3 lg:gap-4">
-                  <a href="/" className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity">
+                  <a
+                    href="/"
+                    className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity"
+                  >
                     Home
                   </a>
-                  <a href="/jobs" className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity">
+                  <a
+                    href="/jobs"
+                    className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity"
+                  >
                     Jobs
                   </a>
-                  <a href="/about" className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity">
+                  <a
+                    href="/docs"
+                    className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity"
+                  >
                     Docs
                   </a>
-                  <a href="#contact" className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity">
+                  <a
+                    href="#contact"
+                    className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity"
+                  >
                     Contact
                   </a>
                 </div>
@@ -40,16 +52,28 @@ const Footer = () => {
                   (Resources)
                 </p>
                 <div className="flex flex-col gap-3 lg:gap-4">
-                  <a href="#blog" className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity">
+                  <a
+                    href="#blog"
+                    className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity"
+                  >
                     Blog
                   </a>
-                  <a href="#help" className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity">
+                  <a
+                    href="#help"
+                    className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity"
+                  >
                     Help Center
                   </a>
-                  <a href="#pricing" className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity">
+                  <a
+                    href="#pricing"
+                    className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity"
+                  >
                     Pricing
                   </a>
-                   <a href="#security" className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity">
+                  <a
+                    href="#security"
+                    className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity"
+                  >
                     Security
                   </a>
                 </div>
@@ -60,10 +84,16 @@ const Footer = () => {
                   (Legal)
                 </p>
                 <div className="flex flex-col gap-3 lg:gap-4">
-                  <a href="#privacy" className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity">
+                  <a
+                    href="#privacy"
+                    className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity"
+                  >
                     Privacy Policy
                   </a>
-                  <a href="#terms" className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity">
+                  <a
+                    href="#terms"
+                    className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity"
+                  >
                     Terms of Service
                   </a>
                 </div>
@@ -74,13 +104,22 @@ const Footer = () => {
                   (Socials)
                 </p>
                 <div className="flex flex-col gap-3 lg:gap-4">
-                  <a href="#linkedin" className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity">
+                  <a
+                    href="#linkedin"
+                    className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity"
+                  >
                     LinkedIn
                   </a>
-                  <a href="#twitter" className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity">
+                  <a
+                    href="#twitter"
+                    className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity"
+                  >
                     Twitter
                   </a>
-                  <a href="#facebook" className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity">
+                  <a
+                    href="#facebook"
+                    className="text-body font-inter font-semibold text-white hover:opacity-70 transition-opacity"
+                  >
                     Facebook
                   </a>
                 </div>
@@ -96,7 +135,10 @@ const Footer = () => {
               <div className="w-full h-0.5 bg-white group-hover:opacity-70 transition-opacity" />
             </div>
 
-            <div className="flex flex-col items-start sm:items-center group cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+            <div
+              className="flex flex-col items-start sm:items-center group cursor-pointer"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            >
               <span className="text-nav font-inter font-semibold text-white group-hover:opacity-70 transition-opacity">
                 Back to Top
               </span>

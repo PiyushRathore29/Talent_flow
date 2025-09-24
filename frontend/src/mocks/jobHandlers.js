@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import { db } from '../lib/database.js';
+import { withLatencyAndErrors, withLatency, LATENCY_CONFIG } from './utils.js';
 
 // Helper function to get jobs with pagination
 const getJobsFromDB = async (params = {}) => {
@@ -70,7 +71,7 @@ const getJobsFromDB = async (params = {}) => {
 
 export const jobHandlers = [
   // GET /jobs?search=&status=&page=&pageSize=&sort=
-  http.get('/api/jobs', async ({ request }) => {
+  http.get('/api/jobs', withLatency(async ({ request }) => {
     try {
       const url = new URL(request.url);
       const searchParams = url.searchParams;
@@ -99,10 +100,10 @@ export const jobHandlers = [
       console.error('❌ [MSW] Error fetching jobs:', error);
       return new HttpResponse('Failed to fetch jobs', { status: 500 });
     }
-  }),
+  }, LATENCY_CONFIG.READ)),
 
   // POST /jobs
-  http.post('/api/jobs', async ({ request }) => {
+  http.post('/api/jobs', withLatencyAndErrors(async ({ request }) => {
     try {
       const body = await request.json();
       
@@ -148,10 +149,10 @@ export const jobHandlers = [
       console.error('❌ [MSW] Error creating job:', error);
       return new HttpResponse('Failed to create job', { status: 500 });
     }
-  }),
+  }, LATENCY_CONFIG.WRITE)),
 
   // PATCH /jobs/:id
-  http.patch('/api/jobs/:id', async ({ params, request }) => {
+  http.patch('/api/jobs/:id', withLatencyAndErrors(async ({ params, request }) => {
     try {
       const jobId = parseInt(params.id);
       const body = await request.json();
@@ -185,26 +186,13 @@ export const jobHandlers = [
       console.error('❌ [MSW] Error updating job:', error);
       return new HttpResponse('Failed to update job', { status: 500 });
     }
-  }),
+  }, LATENCY_CONFIG.WRITE)),
 
   // PATCH /jobs/:id/reorder
-  http.patch('/api/jobs/:id/reorder', async ({ params, request }) => {
+  http.patch('/api/jobs/:id/reorder', withLatencyAndErrors(async ({ params, request }) => {
     try {
       const jobId = parseInt(params.id);
       const { fromOrder, toOrder } = await request.json();
-      
-      // Occasionally return 500 error to test rollback (10% chance)
-      if (Math.random() < 0.1) {
-        return HttpResponse.json(
-          { 
-            success: false, 
-            error: 'Internal server error during reorder operation',
-            code: 'REORDER_FAILED',
-            details: 'Database transaction failed. Please try again.'
-          },
-          { status: 500 }
-        );
-      }
       
       const job = await db.jobs.get(jobId);
       if (!job) {
@@ -276,10 +264,10 @@ export const jobHandlers = [
       console.error('❌ [MSW] Error reordering job:', error);
       return new HttpResponse('Failed to reorder job', { status: 500 });
     }
-  }),
+  }, LATENCY_CONFIG.WRITE)),
 
   // GET /jobs/:id
-  http.get('/api/jobs/:id', async ({ params }) => {
+  http.get('/api/jobs/:id', withLatency(async ({ params }) => {
     try {
       const jobId = parseInt(params.id);
       const job = await db.jobs.get(jobId);
@@ -304,10 +292,10 @@ export const jobHandlers = [
       console.error('❌ [MSW] Error fetching job:', error);
       return new HttpResponse('Failed to fetch job', { status: 500 });
     }
-  }),
+  }, LATENCY_CONFIG.READ)),
 
   // DELETE /jobs/:id
-  http.delete('/api/jobs/:id', async ({ params }) => {
+  http.delete('/api/jobs/:id', withLatencyAndErrors(async ({ params }) => {
     try {
       const jobId = parseInt(params.id);
       
@@ -334,5 +322,5 @@ export const jobHandlers = [
       console.error('❌ [MSW] Error deleting job:', error);
       return new HttpResponse('Failed to delete job', { status: 500 });
     }
-  })
+  }, LATENCY_CONFIG.WRITE))
 ];

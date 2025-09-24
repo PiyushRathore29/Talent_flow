@@ -15,27 +15,20 @@ export const initialCandidates = {
     phone: '+1 (555) 123-4567',
     jobId: '1',
     jobTitle: 'Senior Frontend Developer',
-    currentStage: 'SCREENING',
+    currentStage: 'applied',
+    stage: 'applied',
     resumeUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     appliedDate: '2025-07-20',
     history: [
       { stage: 'APPLIED', date: '2025-07-20', actor: 'System', note: 'Application submitted' },
-      { stage: 'SCREENING', date: '2025-07-22', actor: 'John Smith', note: 'Moved to screening after initial review' },
     ],
     notes: [
       { 
         id: 'note-1', 
-        text: 'Strong portfolio, looks promising. Let\'s get @Jane Doe to review the technical assessment.', 
+        text: 'Application received. Strong portfolio in the initial review. Ready for screening process.', 
         author: 'John Smith', 
         date: '2025-07-21',
-        mentions: ['tm-1']
-      },
-      { 
-        id: 'note-2', 
-        text: 'Scheduled phone screening for tomorrow at 2 PM. @Sarah Wilson will conduct the interview.', 
-        author: 'Mike Johnson', 
-        date: '2025-07-22',
-        mentions: ['tm-3']
+        mentions: []
       },
     ]
   },
@@ -46,21 +39,21 @@ export const initialCandidates = {
     phone: '+1 (555) 234-5678',
     jobId: '1',
     jobTitle: 'Senior Frontend Developer',
-    currentStage: 'INTERVIEW',
+    currentStage: 'tech',
+    stage: 'tech',
     resumeUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     appliedDate: '2025-07-19',
     history: [
       { stage: 'APPLIED', date: '2025-07-19', actor: 'System', note: 'Application submitted' },
-      { stage: 'SCREENING', date: '2025-07-20', actor: 'Sarah Wilson', note: 'Initial screening completed' },
-      { stage: 'INTERVIEW', date: '2025-07-23', actor: 'Jane Doe', note: 'Advanced to technical interview' },
+      { stage: 'TECH', date: '2025-07-21', actor: 'John Smith', note: 'Moved to technical stage for assessment' },
     ],
     notes: [
       { 
         id: 'note-3', 
-        text: 'Great communication skills and solid React experience. Ready for technical round with @John Smith.', 
+        text: 'Application looks promising. Strong background in React development based on resume review.', 
         author: 'Sarah Wilson', 
         date: '2025-07-21',
-        mentions: ['tm-2']
+        mentions: []
       },
     ]
   },
@@ -71,28 +64,19 @@ export const initialCandidates = {
     phone: '+1 (555) 345-6789',
     jobId: '2',
     jobTitle: 'Product Manager',
-    currentStage: 'OFFER',
+    currentStage: 'applied',
+    stage: 'applied',
     resumeUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     appliedDate: '2025-07-18',
     history: [
       { stage: 'APPLIED', date: '2025-07-18', actor: 'System', note: 'Application submitted' },
-      { stage: 'SCREENING', date: '2025-07-19', actor: 'Lisa Chen', note: 'Product screening passed' },
-      { stage: 'INTERVIEW', date: '2025-07-21', actor: 'Lisa Chen', note: 'Interview completed successfully' },
-      { stage: 'OFFER', date: '2025-07-24', actor: 'Jane Doe', note: 'Offer extended' },
     ],
     notes: [
       { 
         id: 'note-4', 
-        text: 'Excellent product vision and stakeholder management experience. Recommended for hire. @Jane Doe please prepare offer.', 
+        text: 'Product management background looks solid. Experience with stakeholder management is evident from resume.', 
         author: 'Lisa Chen', 
         date: '2025-07-22',
-        mentions: ['tm-1']
-      },
-      { 
-        id: 'note-5', 
-        text: 'Offer sent via email. Waiting for candidate response. Follow up scheduled for next week.', 
-        author: 'Jane Doe', 
-        date: '2025-07-24',
         mentions: []
       },
     ]
@@ -104,30 +88,20 @@ export const initialCandidates = {
     phone: '+1 (555) 456-7890',
     jobId: '1',
     jobTitle: 'Senior Frontend Developer',
-    currentStage: 'HIRED',
+    currentStage: 'applied',
+    stage: 'applied',
     resumeUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     appliedDate: '2025-07-15',
     history: [
       { stage: 'APPLIED', date: '2025-07-15', actor: 'System', note: 'Application submitted' },
-      { stage: 'SCREENING', date: '2025-07-16', actor: 'Sarah Wilson', note: 'Fast-tracked based on referral' },
-      { stage: 'INTERVIEW', date: '2025-07-18', actor: 'John Smith', note: 'Excellent technical interview' },
-      { stage: 'OFFER', date: '2025-07-19', actor: 'Jane Doe', note: 'Offer extended and accepted' },
-      { stage: 'HIRED', date: '2025-07-20', actor: 'Jane Doe', note: 'Onboarding initiated' },
     ],
     notes: [
       { 
         id: 'note-6', 
-        text: 'Exceptional candidate with 8+ years experience. Strong recommendation from @John Smith. Fast-track approved.', 
+        text: 'Application submitted. Resume shows 8+ years of frontend development experience. Looks very promising.', 
         author: 'Sarah Wilson', 
         date: '2025-07-16',
-        mentions: ['tm-2']
-      },
-      { 
-        id: 'note-7', 
-        text: 'Offer accepted! Start date confirmed for next Monday. @Mike Johnson please initiate onboarding process.', 
-        author: 'Jane Doe', 
-        date: '2025-07-20',
-        mentions: ['tm-4']
+        mentions: []
       },
     ]
   },

@@ -58,12 +58,13 @@ export const conditionalOperators = [
   { value: 'is_not_empty', label: 'Is not empty' }
 ];
 
-// Sample assessment template
-export const sampleAssessment = {
-  id: 'assessment-1',
-  jobId: '1',
-  title: 'Senior Frontend Developer Assessment',
-  description: 'Comprehensive evaluation for frontend development skills',
+// Job-specific assessments (one per job)
+export const jobAssessments = {
+  '1': { // Senior Frontend Developer
+    id: 'assessment-1',
+    jobId: '1',
+    title: 'Senior Frontend Developer Assessment',
+    description: 'Comprehensive evaluation for frontend development skills',
   sections: [
     {
       id: 'section-1',
@@ -154,10 +155,120 @@ export const sampleAssessment = {
     randomizeQuestions: false,
     showProgressBar: true
   },
-  createdAt: '2025-07-20',
-  updatedAt: '2025-07-20',
-  status: 'active'
+    createdAt: '2025-07-20',
+    updatedAt: '2025-07-20',
+    status: 'active'
+  },
+  '2': { // Product Manager
+    id: 'assessment-2',
+    jobId: '2',
+    title: 'Product Manager Assessment',
+    description: 'Evaluate product strategy and management skills',
+    sections: [
+      {
+        id: 'section-pm-1',
+        title: 'Product Strategy',
+        description: 'Assess product thinking and strategic planning',
+        questions: [
+          {
+            id: 'pm-q1',
+            type: 'long-text',
+            title: 'Describe how you would prioritize features for a new product',
+            description: 'Explain your framework and decision-making process',
+            required: true,
+            validation: { required: true, minLength: 200, maxLength: 1000 },
+            conditionalLogic: null
+          },
+          {
+            id: 'pm-q2',
+            type: 'single-choice',
+            title: 'Which metric is most important for measuring product success?',
+            description: 'Select the primary metric you would focus on',
+            required: true,
+            options: [
+              { id: 'opt1', text: 'User Engagement', value: 'engagement' },
+              { id: 'opt2', text: 'Revenue Growth', value: 'revenue' },
+              { id: 'opt3', text: 'Customer Satisfaction', value: 'satisfaction' },
+              { id: 'opt4', text: 'Market Share', value: 'market_share' }
+            ],
+            validation: { required: true },
+            conditionalLogic: null
+          }
+        ]
+      }
+    ],
+    settings: {
+      timeLimit: 60,
+      allowBackNavigation: true,
+      randomizeQuestions: false,
+      showProgressBar: true
+    },
+    createdAt: '2025-07-20',
+    updatedAt: '2025-07-20',
+    status: 'active'
+  },
+  '3': { // UX/UI Designer
+    id: 'assessment-3',
+    jobId: '3',
+    title: 'UX/UI Designer Assessment',
+    description: 'Evaluate design thinking and user experience skills',
+    sections: [
+      {
+        id: 'section-ux-1',
+        title: 'Design Process',
+        description: 'Assess understanding of UX design methodology',
+        questions: [
+          {
+            id: 'ux-q1',
+            type: 'multi-choice',
+            title: 'Which UX research methods have you used?',
+            description: 'Select all that apply',
+            required: true,
+            options: [
+              { id: 'opt1', text: 'User Interviews', value: 'interviews' },
+              { id: 'opt2', text: 'Usability Testing', value: 'usability' },
+              { id: 'opt3', text: 'A/B Testing', value: 'ab_testing' },
+              { id: 'opt4', text: 'Card Sorting', value: 'card_sorting' },
+              { id: 'opt5', text: 'Heuristic Evaluation', value: 'heuristic' }
+            ],
+            validation: { required: true, minSelections: 2 },
+            conditionalLogic: null
+          },
+          {
+            id: 'ux-q2',
+            type: 'file-upload',
+            title: 'Upload a portfolio sample',
+            description: 'Share a design case study or portfolio piece',
+            required: false,
+            validation: { 
+              required: false, 
+              fileTypes: ['.pdf', '.jpg', '.png'],
+              maxFileSize: 5
+            },
+            conditionalLogic: null
+          }
+        ]
+      }
+    ],
+    settings: {
+      timeLimit: 45,
+      allowBackNavigation: true,
+      randomizeQuestions: false,
+      showProgressBar: true
+    },
+    createdAt: '2025-07-20',
+    updatedAt: '2025-07-20',
+    status: 'active'
+  }
 };
+
+// Get assessment by job ID
+export const getAssessmentByJobId = (jobId) => {
+  return jobAssessments[jobId.toString()] || null;
+};
+
+// Legacy sample assessment (for backwards compatibility)
+export const sampleAssessment = jobAssessments['1'];
 
 // Local storage keys
 export const STORAGE_KEYS = {
