@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import AuthenticatedHeader from "../../components/AuthenticatedHeader";
+import { jobsAPI } from "../../lib/api/indexedDBClient";
 
 const JobDetailPage = () => {
   const { jobId } = useParams();
@@ -12,20 +13,34 @@ const JobDetailPage = () => {
     const fetchJob = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/jobs/${jobId}`);
+        // Try MSW API first, fallback to IndexedDB
+        try {
+          const response = await fetch(`/api/jobs/${jobId}`);
 
-        if (!response.ok) {
-          if (response.status === 404) {
-            setError("Job not found");
-          } else {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          if (!response.ok) {
+            if (response.status === 404) {
+              setError("Job not found");
+            } else {
+              throw new Error(
+                `HTTP ${response.status}: ${response.statusText}`
+              );
+            }
+            return;
           }
-          return;
-        }
 
-        const data = await response.json();
-        setJob(data.data);
-        setError(null);
+          const data = await response.json();
+          setJob(data.data);
+          setError(null);
+        } catch (apiError) {
+          console.warn(
+            "MSW API failed, using IndexedDB fallback:",
+            apiError.message
+          );
+          // Fallback to IndexedDB
+          const data = await jobsAPI.getById(jobId);
+          setJob(data);
+          setError(null);
+        }
       } catch (err) {
         setError(err.message);
         console.error("Failed to fetch job:", err);

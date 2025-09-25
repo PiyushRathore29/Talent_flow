@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { db } from "../lib/database.js";
+import { assessmentsAPI } from "../lib/api/indexedDBClient";
 
 const AssessmentSubmit = () => {
   const { jobId } = useParams();
@@ -101,21 +102,31 @@ const AssessmentSubmit = () => {
         timeTaken: 0, // Could be calculated based on start time
       };
 
-      // Submit to the MSW endpoint
-      const response = await fetch(`/api/assessments/${jobId}/submit`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(submissionData),
-      });
+      // Try MSW API first, fallback to IndexedDB
+      try {
+        const response = await fetch(`/api/assessments/${jobId}/submit`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(submissionData),
+        });
 
-      if (response.ok) {
-        const result = await response.json();
+        if (response.ok) {
+          const result = await response.json();
+          setSuccess(true);
+        } else {
+          throw new Error("Failed to submit assessment");
+        }
+      } catch (apiError) {
+        console.warn('MSW API failed, using IndexedDB fallback:', apiError.message);
+        // Fallback to IndexedDB
+        await assessmentsAPI.submit(jobId, submissionData);
         setSuccess(true);
+      }
 
-        // Store response locally in database as well
-        await db.assessmentResponses.add({
+      // Store response locally in database as well
+      await db.assessmentResponses.add({
           assessmentId: parseInt(jobId),
           candidateId: candidateId,
           responses: responses,
