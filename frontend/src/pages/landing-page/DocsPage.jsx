@@ -240,6 +240,122 @@ yarn preview`}
                 language="bash"
                 id="build-setup"
               />
+
+              <h3 className="text-2xl font-impact font-bold uppercase text-primary-500 dark:text-white mt-8">
+                DISABLING MSW IN PRODUCTION
+              </h3>
+              <p className="text-lg font-inter text-gray-700 dark:text-gray-300 leading-relaxed max-w-4xl transition-colors duration-200 mb-6">
+                In production, MSW (Mock Service Worker) must be disabled since
+                there's no backend server. The application uses IndexedDB
+                directly for data persistence.
+              </p>
+
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 mb-6">
+                <h4 className="text-lg font-impact font-bold uppercase text-yellow-800 dark:text-yellow-300 mb-3">
+                  ⚠️ WHY DISABLE MSW IN PRODUCTION?
+                </h4>
+                <div className="space-y-2 text-sm font-inter text-yellow-700 dark:text-yellow-200">
+                  <div>
+                    • <strong>No Backend Server:</strong> Production deployment
+                    is static hosting (Vercel/Netlify)
+                  </div>
+                  <div>
+                    • <strong>API Endpoints Don't Exist:</strong> /api/jobs,
+                    /api/candidates return 404 errors
+                  </div>
+                  <div>
+                    • <strong>MSW Overhead:</strong> Unnecessary service worker
+                    in production
+                  </div>
+                  <div>
+                    • <strong>IndexedDB Direct Access:</strong> Better
+                    performance without MSW layer
+                  </div>
+                  <div>
+                    • <strong>Cleaner Console:</strong> No MSW warnings or
+                    intercept messages
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6">
+                <h4 className="text-xl font-impact font-bold uppercase text-gray-800 dark:text-gray-300 mb-4">
+                  PRODUCTION CONFIGURATION
+                </h4>
+                <CodeBlock
+                  code={`// main.jsx - MSW disabled for production
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import App from "./App.jsx";
+import "./index.css";
+
+// MSW commented out - using IndexedDB directly
+// import { initializeMSW } from "./mocks/browser.js";
+
+import {
+  initializeDatabase,
+  forceReSeedDatabase,
+  forceReSeedAssessments,
+} from "./lib/initializeDatabase.js";
+
+// Initialize database before rendering the app
+const startApp = async () => {
+  // MSW commented out - using IndexedDB directly
+  // await initializeMSW();
+
+  // Initialize database (auto-seed if empty)
+  await initializeDatabase();
+
+  // Expose debugging functions to window in development
+  if (import.meta.env.DEV) {
+    window.forceReSeedDatabase = forceReSeedDatabase;
+    window.forceReSeedAssessments = forceReSeedAssessments;
+  }
+
+  // Render the app
+  createRoot(document.getElementById("root")).render(
+    <StrictMode>
+      <App />
+    </StrictMode>
+  );
+};
+
+startApp();`}
+                  language="javascript"
+                  id="production-msw-disable"
+                />
+              </div>
+
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6 mt-6">
+                <h4 className="text-lg font-impact font-bold uppercase text-blue-800 dark:text-blue-300 mb-3">
+                  🔄 HYBRID API CLIENT
+                </h4>
+                <p className="text-sm font-inter text-blue-700 dark:text-blue-200 mb-3">
+                  The application uses a hybrid API client that automatically
+                  falls back to IndexedDB:
+                </p>
+                <CodeBlock
+                  code={`// indexedDBClient.js - Hybrid approach
+const shouldUseMSW = () => {
+  // MSW disabled - always use IndexedDB directly
+  return false;
+  // return import.meta.env.DEV && typeof window !== 'undefined' && window.__MSW_WORKER__;
+};
+
+export const apiCall = async (endpoint, options = {}) => {
+  // Try MSW first if available (development)
+  if (shouldUseMSW()) {
+    // MSW logic commented out
+  }
+  
+  // IndexedDB fallback for production or when MSW fails
+  console.log(\`🔄 [API] Using IndexedDB fallback for \${method} \${endpoint}\`);
+  return await handleIndexedDBFallback(endpoint, method, body);
+};`}
+                  language="javascript"
+                  id="hybrid-api-client"
+                />
+              </div>
             </div>
           </div>
         );

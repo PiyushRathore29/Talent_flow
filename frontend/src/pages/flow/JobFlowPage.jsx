@@ -140,31 +140,22 @@ const JobFlowPage = () => {
           `🔄 [Flow] Updating job ${job.id} order from ${job.order} to ${newOrder}`
         );
 
-        // Try MSW API first, fallback to IndexedDB
-        try {
-          const response = await fetch(`/api/jobs/${job.id}/reorder`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              fromOrder: job.order,
-              toOrder: newOrder,
-            }),
-          });
+        // MSW API commented out - using IndexedDB directly
+        // const response = await fetch(`/api/jobs/${job.id}/reorder`, {
+        //   method: "PATCH",
+        //   headers: { "Content-Type": "application/json" },
+        //   body: JSON.stringify({
+        //     fromOrder: job.order,
+        //     toOrder: newOrder,
+        //   }),
+        // });
+        // if (!response.ok) throw new Error("Failed to update job order");
 
-          if (!response.ok) {
-            throw new Error("Failed to update job order");
-          }
-        } catch (apiError) {
-          console.warn(
-            "MSW API failed, using IndexedDB fallback:",
-            apiError.message
-          );
-          // Fallback to IndexedDB
-          await jobsAPI.reorder(job.id, {
-            fromOrder: job.order,
-            toOrder: newOrder,
-          });
-        }
+        // Use IndexedDB directly
+        await jobsAPI.reorder(job.id, {
+          fromOrder: job.order,
+          toOrder: newOrder,
+        });
 
         // Refresh jobs data to reflect changes
         await fetchAllJobs();
@@ -189,21 +180,15 @@ const JobFlowPage = () => {
   // Fetch all jobs for sidebar
   const fetchAllJobs = async () => {
     try {
-      // Try MSW API first, fallback to IndexedDB
-      try {
-        const response = await fetch("/api/jobs?pageSize=100");
-        if (!response.ok) throw new Error("Failed to fetch jobs");
-        const data = await response.json();
-        setAllJobs(data.data || []);
-      } catch (apiError) {
-        console.warn(
-          "MSW API failed, using IndexedDB fallback:",
-          apiError.message
-        );
-        // Fallback to IndexedDB
-        const data = await jobsAPI.getAll({ pageSize: 100 });
-        setAllJobs(data.data || []);
-      }
+      // MSW API commented out - using IndexedDB directly
+      // const response = await fetch("/api/jobs?pageSize=100");
+      // if (!response.ok) throw new Error("Failed to fetch jobs");
+      // const data = await response.json();
+      // setAllJobs(data.data || []);
+
+      // Use IndexedDB directly
+      const data = await jobsAPI.getAll({ pageSize: 100 });
+      setAllJobs(data.data || []);
     } catch (err) {
       console.error("Failed to fetch all jobs:", err);
     }
@@ -212,21 +197,15 @@ const JobFlowPage = () => {
   // Fetch current job details
   const fetchJob = async () => {
     try {
-      // Try MSW API first, fallback to IndexedDB
-      try {
-        const response = await fetch(`/api/jobs/${jobId}`);
-        if (!response.ok) throw new Error("Failed to fetch job");
-        const jobData = await response.json();
-        setJob(jobData);
-      } catch (apiError) {
-        console.warn(
-          "MSW API failed, using IndexedDB fallback:",
-          apiError.message
-        );
-        // Fallback to IndexedDB
-        const jobData = await jobsAPI.getById(jobId);
-        setJob(jobData);
-      }
+      // MSW API commented out - using IndexedDB directly
+      // const response = await fetch(`/api/jobs/${jobId}`);
+      // if (!response.ok) throw new Error("Failed to fetch job");
+      // const jobData = await response.json();
+      // setJob(jobData);
+
+      // Use IndexedDB directly
+      const jobData = await jobsAPI.getById(jobId);
+      setJob(jobData);
     } catch (err) {
       setError(err.message);
       console.error("Failed to fetch job:", err);
@@ -236,11 +215,14 @@ const JobFlowPage = () => {
   // Fetch candidates for this job
   const fetchCandidates = async () => {
     try {
-      const response = await fetch(
-        `/api/candidates?jobId=${jobId}&pageSize=100`
-      );
-      if (!response.ok) throw new Error("Failed to fetch candidates");
-      const data = await response.json();
+      // MSW API commented out - using IndexedDB directly
+      // const response = await fetch(`/api/candidates?jobId=${jobId}&pageSize=100`);
+      // if (!response.ok) throw new Error("Failed to fetch candidates");
+      // const data = await response.json();
+      // setCandidates(data.data || []);
+
+      // Use IndexedDB directly
+      const data = await candidatesAPI.getAll({ jobId: jobId, pageSize: 100 });
       setCandidates(data.data || []);
     } catch (err) {
       console.error("Failed to fetch candidates:", err);
@@ -367,21 +349,15 @@ const JobFlowPage = () => {
   const handleArchiveJob = async () => {
     if (confirm("Are you sure you want to archive this job?")) {
       try {
-        // Try MSW API first, fallback to IndexedDB
-        try {
-          await fetch(`/api/jobs/${jobId}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ status: "archived" }),
-          });
-        } catch (apiError) {
-          console.warn(
-            "MSW API failed, using IndexedDB fallback:",
-            apiError.message
-          );
-          // Fallback to IndexedDB
-          await jobsAPI.update(jobId, { status: "archived" });
-        }
+        // MSW API commented out - using IndexedDB directly
+        // await fetch(`/api/jobs/${jobId}`, {
+        //   method: "PATCH",
+        //   headers: { "Content-Type": "application/json" },
+        //   body: JSON.stringify({ status: "archived" }),
+        // });
+
+        // Use IndexedDB directly
+        await jobsAPI.update(jobId, { status: "archived" });
         navigate("/jobs");
       } catch (err) {
         alert("Failed to archive job");
@@ -408,23 +384,16 @@ const JobFlowPage = () => {
       const currentStageObj = stages.find((s) => s.id === candidate?.stage);
       const newStageObj = stages.find((s) => s.id === newStage);
 
-      // Try MSW API first, fallback to IndexedDB
-      try {
-        const response = await fetch(`/api/candidates/${candidateId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ stage: newStage }),
-        });
+      // MSW API commented out - using IndexedDB directly
+      // const response = await fetch(`/api/candidates/${candidateId}`, {
+      //   method: "PATCH",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({ stage: newStage }),
+      // });
+      // if (!response.ok) throw new Error("Failed to update candidate");
 
-        if (!response.ok) throw new Error("Failed to update candidate");
-      } catch (apiError) {
-        console.warn(
-          "MSW API failed, using IndexedDB fallback:",
-          apiError.message
-        );
-        // Fallback to IndexedDB
-        await candidatesAPI.update(candidateId, { stage: newStage });
-      }
+      // Use IndexedDB directly
+      await candidatesAPI.update(candidateId, { stage: newStage });
 
       // Add timeline entry for the stage change
       if (candidate && currentStageObj && newStageObj) {
@@ -453,11 +422,14 @@ const JobFlowPage = () => {
   // New function to refresh candidates while preserving node positions
   const refreshCandidatesWithPositions = async () => {
     try {
-      const response = await fetch(
-        `/api/candidates?jobId=${jobId}&pageSize=100`
-      );
-      if (!response.ok) throw new Error("Failed to fetch candidates");
-      const data = await response.json();
+      // MSW API commented out - using IndexedDB directly
+      // const response = await fetch(`/api/candidates?jobId=${jobId}&pageSize=100`);
+      // if (!response.ok) throw new Error("Failed to fetch candidates");
+      // const data = await response.json();
+      // const updatedCandidates = data.data || [];
+
+      // Use IndexedDB directly
+      const data = await candidatesAPI.getAll({ jobId: jobId, pageSize: 100 });
       const updatedCandidates = data.data || [];
       setCandidates(updatedCandidates);
 
@@ -545,31 +517,24 @@ const JobFlowPage = () => {
 
   const handleSaveCandidate = async (candidateData) => {
     try {
-      // Try MSW API first, fallback to IndexedDB
-      try {
-        const response = await fetch("/api/candidates", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...candidateData,
-            jobId: parseInt(jobId),
-            stage: "applied",
-          }),
-        });
+      // MSW API commented out - using IndexedDB directly
+      // const response = await fetch("/api/candidates", {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({
+      //     ...candidateData,
+      //     jobId: parseInt(jobId),
+      //     stage: "applied",
+      //   }),
+      // });
+      // if (!response.ok) throw new Error("Failed to create candidate");
 
-        if (!response.ok) throw new Error("Failed to create candidate");
-      } catch (apiError) {
-        console.warn(
-          "MSW API failed, using IndexedDB fallback:",
-          apiError.message
-        );
-        // Fallback to IndexedDB
-        await candidatesAPI.create({
-          ...candidateData,
-          jobId: parseInt(jobId),
-          stage: "applied",
-        });
-      }
+      // Use IndexedDB directly
+      await candidatesAPI.create({
+        ...candidateData,
+        jobId: parseInt(jobId),
+        stage: "applied",
+      });
 
       await refreshCandidatesWithPositions();
       setShowAddCandidate(false);

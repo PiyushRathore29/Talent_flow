@@ -13,7 +13,9 @@ const isMSWAvailable = () => {
 
 // Check if we should use MSW or IndexedDB fallback
 const shouldUseMSW = () => {
-  return import.meta.env.DEV && typeof window !== 'undefined' && window.__MSW_WORKER__;
+  // MSW disabled - always use IndexedDB directly
+  return false;
+  // return import.meta.env.DEV && typeof window !== 'undefined' && window.__MSW_WORKER__;
 };
 
 // Generic API call with MSW first, then IndexedDB fallback
@@ -91,7 +93,7 @@ const handleJobsEndpoint = async (path, method, body, searchParams) => {
     case 'GET':
       if (jobId) {
         // GET /api/jobs/:id
-        const job = await dbHelpers.getJob(parseInt(jobId));
+        const job = await dbHelpers.getJobById(parseInt(jobId));
         if (!job) {
           throw new Error('Job not found');
         }
@@ -163,7 +165,7 @@ const handleJobsEndpoint = async (path, method, body, searchParams) => {
       // PATCH /api/jobs/:id/reorder
       if (path.includes('/reorder')) {
         const { position } = body;
-        await dbHelpers.updateJobPosition(parseInt(jobId), position);
+        await dbHelpers.updateJob(parseInt(jobId), { order: position });
         return { success: true };
       }
       break;
@@ -171,7 +173,7 @@ const handleJobsEndpoint = async (path, method, body, searchParams) => {
     case 'DELETE':
       // DELETE /api/jobs/:id
       if (jobId) {
-        await dbHelpers.deleteJob(parseInt(jobId));
+        await dbHelpers.updateJob(parseInt(jobId), { status: 'archived' });
         return { success: true };
       }
       break;
@@ -188,7 +190,7 @@ const handleCandidatesEndpoint = async (path, method, body, searchParams) => {
     case 'GET':
       if (candidateId) {
         // GET /api/candidates/:id
-        const candidate = await dbHelpers.getCandidate(parseInt(candidateId));
+        const candidate = await dbHelpers.getCandidateById(parseInt(candidateId));
         if (!candidate) {
           throw new Error('Candidate not found');
         }
@@ -196,12 +198,20 @@ const handleCandidatesEndpoint = async (path, method, body, searchParams) => {
       } else if (path.includes('/timeline')) {
         // GET /api/candidates/:id/timeline
         const candidateId = path.match(/\/api\/candidates\/(\d+)\/timeline/)?.[1];
-        const timeline = await dbHelpers.getCandidateTimeline(parseInt(candidateId));
+        const timeline = await dbHelpers.getCandidateHistory(parseInt(candidateId));
         return { success: true, data: timeline };
       } else {
         // GET /api/candidates
-        const candidates = await dbHelpers.getAllCandidates();
-        return { success: true, data: candidates };
+        const jobId = searchParams.get('jobId');
+        if (jobId) {
+          // GET /api/candidates?jobId=X - return candidates for specific job
+          const candidates = await dbHelpers.getCandidatesByJob(parseInt(jobId));
+          return { success: true, data: candidates };
+        } else {
+          // GET /api/candidates - return all candidates
+          const candidates = await dbHelpers.getAllCandidates();
+          return { success: true, data: candidates };
+        }
       }
       
     case 'POST':
@@ -221,7 +231,7 @@ const handleCandidatesEndpoint = async (path, method, body, searchParams) => {
     case 'DELETE':
       // DELETE /api/candidates/:id
       if (candidateId) {
-        await dbHelpers.deleteCandidate(parseInt(candidateId));
+        await dbHelpers.updateCandidate(parseInt(candidateId), { status: 'archived' });
         return { success: true };
       }
       break;
@@ -238,7 +248,8 @@ const handleAssessmentsEndpoint = async (path, method, body, searchParams) => {
     case 'GET':
       if (jobId) {
         // GET /api/assessments/:jobId
-        const assessment = await dbHelpers.getAssessmentByJobId(parseInt(jobId));
+        const assessments = await dbHelpers.getAssessmentsByJob(parseInt(jobId));
+        const assessment = assessments.length > 0 ? assessments[0] : null;
         if (!assessment) {
           return { success: true, data: null };
         }
@@ -249,7 +260,7 @@ const handleAssessmentsEndpoint = async (path, method, body, searchParams) => {
     case 'PUT':
       // PUT /api/assessments/:jobId
       if (jobId) {
-        const assessment = await dbHelpers.createOrUpdateAssessment(parseInt(jobId), body);
+        const assessment = await dbHelpers.createAssessment(body);
         return { success: true, data: assessment };
       }
       break;
@@ -257,7 +268,7 @@ const handleAssessmentsEndpoint = async (path, method, body, searchParams) => {
     case 'POST':
       if (path.includes('/submit')) {
         // POST /api/assessments/:jobId/submit
-        const response = await dbHelpers.submitAssessmentResponse(parseInt(jobId), body);
+        const response = await dbHelpers.saveAssessmentResponse(body);
         return { success: true, data: response };
       }
       break;

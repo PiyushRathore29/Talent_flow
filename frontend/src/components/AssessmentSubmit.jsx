@@ -102,49 +102,37 @@ const AssessmentSubmit = () => {
         timeTaken: 0, // Could be calculated based on start time
       };
 
-      // Try MSW API first, fallback to IndexedDB
-      try {
-        const response = await fetch(`/api/assessments/${jobId}/submit`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(submissionData),
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          setSuccess(true);
-        } else {
-          throw new Error("Failed to submit assessment");
-        }
-      } catch (apiError) {
-        console.warn('MSW API failed, using IndexedDB fallback:', apiError.message);
-        // Fallback to IndexedDB
-        await assessmentsAPI.submit(jobId, submissionData);
-        setSuccess(true);
-      }
+      // MSW API commented out - using IndexedDB directly
+      // const response = await fetch(`/api/assessments/${jobId}/submit`, {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //   },
+      //   body: JSON.stringify(submissionData),
+      // });
+      // if (!response.ok) throw new Error("Failed to submit assessment");
+      // const result = await response.json();
+      
+      // Use IndexedDB directly
+      const result = await assessmentsAPI.submit(jobId, submissionData);
+      setSuccess(true);
 
       // Store response locally in database as well
       await db.assessmentResponses.add({
-          assessmentId: parseInt(jobId),
-          candidateId: candidateId,
-          responses: responses,
-          submittedAt: new Date(),
-          score: result.data?.score || 0,
-          passed: result.data?.passed || false,
-          timeTaken: submissionData.timeTaken,
-          isCompleted: true,
-        });
+        assessmentId: parseInt(jobId),
+        candidateId: candidateId,
+        responses: responses,
+        submittedAt: new Date(),
+        score: result.data?.score || 0,
+        passed: result.data?.passed || false,
+        timeTaken: submissionData.timeTaken,
+        isCompleted: true,
+      });
 
-        // Redirect after 3 seconds
-        setTimeout(() => {
-          navigate("/dashboard/candidate/jobs");
-        }, 3000);
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || "Failed to submit assessment");
-      }
+      // Redirect after 3 seconds
+      setTimeout(() => {
+        navigate("/dashboard/candidate/jobs");
+      }, 3000);
     } catch (error) {
       console.error("Error submitting assessment:", error);
       setError("Failed to submit assessment. Please try again.");
