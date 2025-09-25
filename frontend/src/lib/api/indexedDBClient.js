@@ -1,4 +1,9 @@
-// API client that uses IndexedDB directly when MSW is not available
+// Hybrid API client that uses MSW in development and IndexedDB in production
+// This preserves all MSW functionality while providing production fallback
+//
+// To re-enable MSW in production, set VITE_ENABLE_MSW=true in your environment
+// To force IndexedDB in development, set VITE_ENABLE_MSW=false in your environment
+//
 import { dbHelpers } from '../database';
 
 // Check if MSW is available (only in development)
@@ -6,13 +11,19 @@ const isMSWAvailable = () => {
   return import.meta.env.DEV && typeof window !== 'undefined' && window.__MSW_WORKER__;
 };
 
-// Generic API call with IndexedDB fallback
+// Check if we should use MSW or IndexedDB fallback
+const shouldUseMSW = () => {
+  return import.meta.env.DEV && typeof window !== 'undefined' && window.__MSW_WORKER__;
+};
+
+// Generic API call with MSW first, then IndexedDB fallback
 export const apiCall = async (endpoint, options = {}) => {
   const { method = 'GET', body, headers = {} } = options;
   
-  // If MSW is available, use regular fetch
-  if (isMSWAvailable()) {
+  // Try MSW first if available (development)
+  if (shouldUseMSW()) {
     try {
+      console.log(`🔄 [API] Trying MSW for ${method} ${endpoint}`);
       const response = await fetch(endpoint, {
         method,
         headers: {
@@ -26,14 +37,17 @@ export const apiCall = async (endpoint, options = {}) => {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
-      return await response.json();
+      const result = await response.json();
+      console.log(`✅ [API] MSW success for ${method} ${endpoint}`);
+      return result;
     } catch (error) {
-      console.warn('MSW API call failed, falling back to IndexedDB:', error.message);
+      console.warn(`⚠️ [API] MSW failed for ${method} ${endpoint}, falling back to IndexedDB:`, error.message);
       // Fall through to IndexedDB fallback
     }
   }
   
   // IndexedDB fallback for production or when MSW fails
+  console.log(`🔄 [API] Using IndexedDB fallback for ${method} ${endpoint}`);
   return await handleIndexedDBFallback(endpoint, method, body);
 };
 

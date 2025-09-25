@@ -533,8 +533,19 @@ const CandidatesPage = () => {
       try {
         setLoading(true);
 
-        // Fetch jobs first
-        const jobsData = await jobsAPI.getAll();
+        // Fetch jobs first - Try MSW API first, fallback to IndexedDB
+        let jobsData;
+        try {
+          const jobsResponse = await fetch("/api/jobs");
+          jobsData = await jobsResponse.json();
+        } catch (apiError) {
+          console.warn(
+            "MSW API failed, using IndexedDB fallback:",
+            apiError.message
+          );
+          // Fallback to IndexedDB
+          jobsData = await jobsAPI.getAll();
+        }
         const allJobs = jobsData.data || jobsData;
         setJobs(allJobs);
 
@@ -544,8 +555,19 @@ const CandidatesPage = () => {
           setCurrentJob(specificJob);
         }
 
-        // Fetch candidates
-        const candidatesData = await candidatesAPI.getAll();
+        // Fetch candidates - Try MSW API first, fallback to IndexedDB
+        let candidatesData;
+        try {
+          const candidatesResponse = await fetch("/api/candidates");
+          candidatesData = await candidatesResponse.json();
+        } catch (apiError) {
+          console.warn(
+            "MSW API failed, using IndexedDB fallback:",
+            apiError.message
+          );
+          // Fallback to IndexedDB
+          candidatesData = await candidatesAPI.getAll();
+        }
         const allCandidates = candidatesData.data || candidatesData;
 
         // Filter candidates by jobId if provided
@@ -675,8 +697,21 @@ const CandidatesPage = () => {
   // Fetch jobs for displaying job titles
   const fetchJobs = async () => {
     try {
-      const data = await jobsAPI.getAll({ pageSize: 100 });
-      setJobs(data.data || []);
+      // Try MSW API first, fallback to IndexedDB
+      try {
+        const response = await fetch("/api/jobs?pageSize=100");
+        if (!response.ok) throw new Error("Failed to fetch jobs");
+        const data = await response.json();
+        setJobs(data.data || []);
+      } catch (apiError) {
+        console.warn(
+          "MSW API failed, using IndexedDB fallback:",
+          apiError.message
+        );
+        // Fallback to IndexedDB
+        const data = await jobsAPI.getAll({ pageSize: 100 });
+        setJobs(data.data || []);
+      }
     } catch (err) {
       console.error("Failed to fetch jobs:", err);
     }

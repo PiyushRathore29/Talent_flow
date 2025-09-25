@@ -104,11 +104,36 @@ const FlowDashboard = () => {
   const fetchJobFlow = async () => {
     try {
       setLoading(true);
-      const [jobData, candidatesData, assessmentsData] = await Promise.all([
-        jobsAPI.getById(jobId),
-        candidatesAPI.getAll(),
-        assessmentsAPI.getByJobId(jobId),
-      ]);
+      // Try MSW API first, fallback to IndexedDB
+      let jobData, candidatesData, assessmentsData;
+
+      try {
+        const [jobResponse, candidatesResponse, assessmentsResponse] =
+          await Promise.all([
+            fetch(`/api/jobs/${jobId}`),
+            fetch("/api/candidates"),
+            fetch("/api/assessments"),
+          ]);
+
+        if (!jobResponse.ok) {
+          throw new Error("Job not found");
+        }
+
+        jobData = await jobResponse.json();
+        candidatesData = await candidatesResponse.json();
+        assessmentsData = await assessmentsResponse.json();
+      } catch (apiError) {
+        console.warn(
+          "MSW API failed, using IndexedDB fallback:",
+          apiError.message
+        );
+        // Fallback to IndexedDB
+        [jobData, candidatesData, assessmentsData] = await Promise.all([
+          jobsAPI.getById(jobId),
+          candidatesAPI.getAll(),
+          assessmentsAPI.getByJobId(jobId),
+        ]);
+      }
 
       setJob(jobData);
       const jobCandidates = candidatesData.filter(
@@ -137,7 +162,20 @@ const FlowDashboard = () => {
   // New function to refresh only candidates data while preserving positions
   const refreshCandidatesOnly = async () => {
     try {
-      const candidatesData = await candidatesAPI.getAll();
+      // Try MSW API first, fallback to IndexedDB
+      let candidatesData;
+      try {
+        const candidatesResponse = await fetch("/api/candidates");
+        candidatesData = await candidatesResponse.json();
+      } catch (apiError) {
+        console.warn(
+          "MSW API failed, using IndexedDB fallback:",
+          apiError.message
+        );
+        // Fallback to IndexedDB
+        candidatesData = await candidatesAPI.getAll();
+      }
+
       const jobCandidates = candidatesData.filter(
         (c) => c.jobId === parseInt(jobId)
       );
@@ -371,7 +409,21 @@ const FlowDashboard = () => {
         // Get candidate details for timeline
         const candidate = candidates.find((c) => c.id === candidateId);
 
-        await candidatesAPI.update(candidateId, { stage: nextStage.id });
+        // Try MSW API first, fallback to IndexedDB
+        try {
+          await fetch(`/api/candidates/${candidateId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ stage: nextStage.id }),
+          });
+        } catch (apiError) {
+          console.warn(
+            "MSW API failed, using IndexedDB fallback:",
+            apiError.message
+          );
+          // Fallback to IndexedDB
+          await candidatesAPI.update(candidateId, { stage: nextStage.id });
+        }
 
         // Add timeline entry for the stage change
         if (candidate) {
