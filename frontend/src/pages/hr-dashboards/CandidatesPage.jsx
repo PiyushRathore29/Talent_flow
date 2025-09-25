@@ -15,6 +15,7 @@ import {
   Line,
 } from "recharts";
 import { Users, TrendingUp, Target, Calendar, ChevronDown } from "lucide-react";
+import { jobsAPI, candidatesAPI } from "../../lib/api/indexedDBClient";
 import {
   DndContext,
   DragOverlay,
@@ -533,8 +534,7 @@ const CandidatesPage = () => {
         setLoading(true);
 
         // Fetch jobs first
-        const jobsResponse = await fetch("/api/jobs");
-        const jobsData = await jobsResponse.json();
+        const jobsData = await jobsAPI.getAll();
         const allJobs = jobsData.data || jobsData;
         setJobs(allJobs);
 
@@ -545,8 +545,7 @@ const CandidatesPage = () => {
         }
 
         // Fetch candidates
-        const candidatesResponse = await fetch("/api/candidates");
-        const candidatesData = await candidatesResponse.json();
+        const candidatesData = await candidatesAPI.getAll();
         const allCandidates = candidatesData.data || candidatesData;
 
         // Filter candidates by jobId if provided
@@ -676,9 +675,7 @@ const CandidatesPage = () => {
   // Fetch jobs for displaying job titles
   const fetchJobs = async () => {
     try {
-      const response = await fetch("/api/jobs?pageSize=100");
-      if (!response.ok) throw new Error("Failed to fetch jobs");
-      const data = await response.json();
+      const data = await jobsAPI.getAll({ pageSize: 100 });
       setJobs(data.data || []);
     } catch (err) {
       console.error("Failed to fetch jobs:", err);

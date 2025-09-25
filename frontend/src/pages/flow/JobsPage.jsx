@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { dbHelpers } from "../../lib/database.js";
 import { useToast } from "../../components/Toast.jsx";
+import { jobsAPI } from "../../lib/api/indexedDBClient";
 
 const JobsPage = () => {
   const [jobs, setJobs] = useState([]);
@@ -77,12 +78,13 @@ const JobsPage = () => {
         ...(sortBy && { sort: sortBy }),
       });
 
-      const response = await fetch(`/api/jobs?${params}`);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
+      const data = await jobsAPI.getAll({
+        page: currentPage,
+        pageSize: pageSize,
+        ...(appliedSearch && { search: appliedSearch }),
+        ...(statusFilter && { status: statusFilter }),
+        ...(sortBy && { sort: sortBy }),
+      });
       setJobs(data.data || []);
       setTotalPages(data.pagination?.totalPages || 1);
       setError(null);
@@ -111,12 +113,7 @@ const JobsPage = () => {
       console.error("Failed to fetch all jobs from IndexedDB:", err);
       // Fallback to API if IndexedDB fails
       try {
-        const response = await fetch("/api/jobs?pageSize=1000&sort=order");
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
+        const data = await jobsAPI.getAll({ pageSize: 1000, sort: "order" });
         setAllJobs(data.data || []);
       } catch (apiErr) {
         console.error("API fallback also failed:", apiErr);
@@ -134,15 +131,7 @@ const JobsPage = () => {
   // Create new job
   const handleCreateJob = async (jobData) => {
     try {
-      const response = await fetch("/api/jobs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(jobData),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to create job: ${response.statusText}`);
-      }
+      await jobsAPI.create(jobData);
 
       await fetchJobs(); // Refresh list
       setShowCreateModal(false);
@@ -158,15 +147,7 @@ const JobsPage = () => {
   // Update job
   const handleUpdateJob = async (jobId, updates) => {
     try {
-      const response = await fetch(`/api/jobs/${jobId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to update job: ${response.statusText}`);
-      }
+      await jobsAPI.update(jobId, updates);
 
       await fetchJobs(); // Refresh list
       setEditingJob(null);
@@ -212,14 +193,7 @@ const JobsPage = () => {
           const fromOrder =
             job.order || allJobs.findIndex((j) => j.id === job.id) + 1;
 
-          return fetch(`/api/jobs/${job.id}/reorder`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              fromOrder: fromOrder,
-              toOrder: newOrder,
-            }),
-          });
+          return jobsAPI.reorder(job.id, { fromOrder, toOrder: newOrder });
         });
 
         await Promise.all(updatePromises);

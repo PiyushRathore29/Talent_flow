@@ -1,40 +1,45 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { 
-  ReactFlow, 
-  Background, 
-  Controls, 
-  MiniMap, 
-  useNodesState, 
+import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  MiniMap,
+  useNodesState,
   useEdgesState,
   addEdge,
   ConnectionLineType,
-  Panel
-} from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
-import { ArrowLeft, BarChart3 } from 'lucide-react';
-import { dbHelpers } from '../lib/database';
+  Panel,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+import { ArrowLeft, BarChart3 } from "lucide-react";
+import { dbHelpers } from "../lib/database";
+import {
+  jobsAPI,
+  candidatesAPI,
+  assessmentsAPI,
+} from "../lib/api/indexedDBClient";
 
-import JobNode from '../components/flow/JobNode';
-import CandidateNode from '../components/flow/CandidateNode';
-import StageTitleNode from '../components/flow/StageTitleNode';
-import AssessmentNode from '../components/flow/AssessmentNode';
-import AddStageEdge from '../components/flow/AddStageEdge';
-import AuthenticatedHeader from '../components/AuthenticatedHeader';
-import StageModal from '../components/StageModal';
-import JobModal from '../components/JobModal';
-import AssessmentModal from '../components/AssessmentModal';
-import ResumeSidebar from '../components/ResumeSidebar';
+import JobNode from "../components/flow/JobNode";
+import CandidateNode from "../components/flow/CandidateNode";
+import StageTitleNode from "../components/flow/StageTitleNode";
+import AssessmentNode from "../components/flow/AssessmentNode";
+import AddStageEdge from "../components/flow/AddStageEdge";
+import AuthenticatedHeader from "../components/AuthenticatedHeader";
+import StageModal from "../components/StageModal";
+import JobModal from "../components/JobModal";
+import AssessmentModal from "../components/AssessmentModal";
+import ResumeSidebar from "../components/ResumeSidebar";
 
 const nodeTypes = {
   job: JobNode,
   candidate: CandidateNode,
   stageTitle: StageTitleNode,
-  assessment: AssessmentNode
+  assessment: AssessmentNode,
 };
 
 const edgeTypes = {
-  addStage: AddStageEdge
+  addStage: AddStageEdge,
 };
 
 const FlowDashboard = () => {
@@ -58,32 +63,32 @@ const FlowDashboard = () => {
   const [editingStage, setEditingStage] = useState(null);
 
   // Custom nodes change handler for database persistence
-  const handleNodesChange = useCallback(async (changes) => {
-    // Apply all changes to nodes first
-    onNodesChange(changes);
+  const handleNodesChange = useCallback(
+    async (changes) => {
+      // Apply all changes to nodes first
+      onNodesChange(changes);
 
-    // Handle job reordering - only process when dragging ends
-    const positionChanges = changes.filter(change => 
-      change.type === 'position' && change.dragging === false
-    );
-    
-    for (const change of positionChanges) {
-      const node = nodes.find(n => n.id === change.id);
-      if (node?.type === 'job') {
-        try {
-          await fetch(`/api/jobs/${node.data.job.id}/reorder`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              position: { x: change.position.x, y: change.position.y } 
-            })
-          });
-        } catch (error) {
-          console.error('Failed to update job position:', error);
+      // Handle job reordering - only process when dragging ends
+      const positionChanges = changes.filter(
+        (change) => change.type === "position" && change.dragging === false
+      );
+
+      for (const change of positionChanges) {
+        const node = nodes.find((n) => n.id === change.id);
+        if (node?.type === "job") {
+          try {
+            await jobsAPI.reorder(node.data.job.id, {
+              x: change.position.x,
+              y: change.position.y,
+            });
+          } catch (error) {
+            console.error("Failed to update job position:", error);
+          }
         }
       }
-    }
-  }, [nodes, onNodesChange]);
+    },
+    [nodes, onNodesChange]
+  );
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge(params, eds)),
@@ -99,36 +104,30 @@ const FlowDashboard = () => {
   const fetchJobFlow = async () => {
     try {
       setLoading(true);
-      const [jobResponse, candidatesResponse, assessmentsResponse] = await Promise.all([
-        fetch(`/api/jobs/${jobId}`),
-        fetch('/api/candidates'),
-        fetch('/api/assessments')
+      const [jobData, candidatesData, assessmentsData] = await Promise.all([
+        jobsAPI.getById(jobId),
+        candidatesAPI.getAll(),
+        assessmentsAPI.getByJobId(jobId),
       ]);
 
-      if (!jobResponse.ok) {
-        throw new Error('Job not found');
-      }
-
-      const jobData = await jobResponse.json();
-      const candidatesData = await candidatesResponse.json();
-      const assessmentsData = await assessmentsResponse.json();
-
       setJob(jobData);
-      const jobCandidates = candidatesData.filter(c => c.jobId === parseInt(jobId));
+      const jobCandidates = candidatesData.filter(
+        (c) => c.jobId === parseInt(jobId)
+      );
       setCandidates(jobCandidates);
       setAssessments(assessmentsData);
 
       // Create stages with candidates
-      const stagesWithCandidates = jobData.stages.map(stage => ({
+      const stagesWithCandidates = jobData.stages.map((stage) => ({
         ...stage,
-        candidates: jobCandidates.filter(c => c.stage === stage.id)
+        candidates: jobCandidates.filter((c) => c.stage === stage.id),
       }));
       setStages(stagesWithCandidates);
 
       // Generate nodes and edges
       generateNodesAndEdges(jobData, stagesWithCandidates, assessmentsData);
     } catch (error) {
-      console.error('Error fetching job flow:', error);
+      console.error("Error fetching job flow:", error);
       setError(error.message);
     } finally {
       setLoading(false);
@@ -138,84 +137,95 @@ const FlowDashboard = () => {
   // New function to refresh only candidates data while preserving positions
   const refreshCandidatesOnly = async () => {
     try {
-      const candidatesResponse = await fetch('/api/candidates');
-      const candidatesData = await candidatesResponse.json();
-      const jobCandidates = candidatesData.filter(c => c.jobId === parseInt(jobId));
+      const candidatesData = await candidatesAPI.getAll();
+      const jobCandidates = candidatesData.filter(
+        (c) => c.jobId === parseInt(jobId)
+      );
       setCandidates(jobCandidates);
 
       // Update stages with new candidate data
-      const updatedStages = stages.map(stage => ({
+      const updatedStages = stages.map((stage) => ({
         ...stage,
-        candidates: jobCandidates.filter(c => c.stage === stage.id)
+        candidates: jobCandidates.filter((c) => c.stage === stage.id),
       }));
       setStages(updatedStages);
 
       // Update nodes while preserving their positions
       updateNodesWithPreservedPositions(updatedStages);
     } catch (error) {
-      console.error('Error refreshing candidates:', error);
+      console.error("Error refreshing candidates:", error);
     }
   };
 
   // Update nodes while preserving their current positions
   const updateNodesWithPreservedPositions = (updatedStages) => {
-    setNodes(currentNodes => {
+    setNodes((currentNodes) => {
       // Calculate new dynamic positions
       let currentY = 200;
       const baseStageHeight = 120;
       const candidateItemHeight = 60;
       const stageSpacing = 80;
-      
-      return currentNodes.map(node => {
+
+      return currentNodes.map((node) => {
         // For candidate nodes, update the data and recalculate positions
-        if (node.type === 'candidate') {
+        if (node.type === "candidate") {
           const stageId = node.data.stage;
-          const updatedStage = updatedStages.find(s => s.id === stageId);
-          const stageIndex = updatedStages.findIndex(s => s.id === stageId);
-          
+          const updatedStage = updatedStages.find((s) => s.id === stageId);
+          const stageIndex = updatedStages.findIndex((s) => s.id === stageId);
+
           if (updatedStage && stageIndex !== -1) {
             // Calculate Y position based on previous stages
             let calculatedY = 200;
             for (let i = 0; i < stageIndex; i++) {
               const prevStage = updatedStages[i];
-              const prevCandidateCount = prevStage.candidates ? prevStage.candidates.length : 0;
-              const prevStageHeight = Math.max(baseStageHeight, prevCandidateCount * candidateItemHeight);
+              const prevCandidateCount = prevStage.candidates
+                ? prevStage.candidates.length
+                : 0;
+              const prevStageHeight = Math.max(
+                baseStageHeight,
+                prevCandidateCount * candidateItemHeight
+              );
               calculatedY += prevStageHeight + stageSpacing;
             }
-            
+
             return {
               ...node,
               position: { ...node.position, y: calculatedY },
               data: {
                 ...node.data,
-                candidates: updatedStage.candidates || []
-              }
+                candidates: updatedStage.candidates || [],
+              },
             };
           }
         }
-        
+
         // For stage title nodes, also update positions
-        if (node.type === 'stageTitle') {
-          const stageId = node.id.replace('stage-title-', '');
-          const stageIndex = updatedStages.findIndex(s => s.id === stageId);
-          
+        if (node.type === "stageTitle") {
+          const stageId = node.id.replace("stage-title-", "");
+          const stageIndex = updatedStages.findIndex((s) => s.id === stageId);
+
           if (stageIndex !== -1) {
             // Calculate Y position based on previous stages
             let calculatedY = 200;
             for (let i = 0; i < stageIndex; i++) {
               const prevStage = updatedStages[i];
-              const prevCandidateCount = prevStage.candidates ? prevStage.candidates.length : 0;
-              const prevStageHeight = Math.max(baseStageHeight, prevCandidateCount * candidateItemHeight);
+              const prevCandidateCount = prevStage.candidates
+                ? prevStage.candidates.length
+                : 0;
+              const prevStageHeight = Math.max(
+                baseStageHeight,
+                prevCandidateCount * candidateItemHeight
+              );
               calculatedY += prevStageHeight + stageSpacing;
             }
-            
+
             return {
               ...node,
-              position: { ...node.position, y: calculatedY }
+              position: { ...node.position, y: calculatedY },
             };
           }
         }
-        
+
         return node;
       });
     });
@@ -228,12 +238,12 @@ const FlowDashboard = () => {
     // Job node
     newNodes.push({
       id: `job-${jobData.id}`,
-      type: 'job',
+      type: "job",
       position: jobData.position || { x: 100, y: 50 },
-      data: { 
+      data: {
         job: jobData,
-        onEdit: () => setShowJobModal(true)
-      }
+        onEdit: () => setShowJobModal(true),
+      },
     });
 
     // Calculate dynamic positions for stages based on content
@@ -246,29 +256,32 @@ const FlowDashboard = () => {
     stagesData.forEach((stage, index) => {
       // Calculate dynamic height based on number of candidates
       const candidateCount = stage.candidates ? stage.candidates.length : 0;
-      const stageContentHeight = Math.max(baseStageHeight, candidateCount * candidateItemHeight);
-      
+      const stageContentHeight = Math.max(
+        baseStageHeight,
+        candidateCount * candidateItemHeight
+      );
+
       // Stage title
       newNodes.push({
         id: `stage-title-${stage.id}`,
-        type: 'stageTitle',
+        type: "stageTitle",
         position: { x: 50, y: currentY },
-        data: { 
+        data: {
           stage: stage.name,
           onEdit: () => {
             setEditingStage(stage);
             setShowStageModal(true);
           },
-          onDelete: () => handleDeleteStage(stage.id)
-        }
+          onDelete: () => handleDeleteStage(stage.id),
+        },
       });
 
       // Candidate node
       newNodes.push({
         id: `candidates-${stage.id}`,
-        type: 'candidate',
+        type: "candidate",
         position: { x: 300, y: currentY },
-        data: { 
+        data: {
           stage: stage.id,
           stageName: stage.name,
           candidates: stage.candidates || [],
@@ -278,8 +291,8 @@ const FlowDashboard = () => {
             setEditingStage(stage);
             setShowStageModal(true);
           },
-          onDeleteStage: () => handleDeleteStage(stage.id)
-        }
+          onDeleteStage: () => handleDeleteStage(stage.id),
+        },
       });
 
       // Connect job to first stage
@@ -288,7 +301,7 @@ const FlowDashboard = () => {
           id: `job-to-stage-${stage.id}`,
           source: `job-${jobData.id}`,
           target: `candidates-${stage.id}`,
-          type: 'smoothstep'
+          type: "smoothstep",
         });
       }
 
@@ -298,7 +311,7 @@ const FlowDashboard = () => {
           id: `stage-${stagesData[index - 1].id}-to-${stage.id}`,
           source: `candidates-${stagesData[index - 1].id}`,
           target: `candidates-${stage.id}`,
-          type: 'smoothstep'
+          type: "smoothstep",
         });
       }
 
@@ -310,12 +323,12 @@ const FlowDashboard = () => {
     assessmentsData.forEach((assessment, index) => {
       newNodes.push({
         id: `assessment-${assessment.id}`,
-        type: 'assessment',
-        position: { x: 800, y: 200 + (index * 150) },
-        data: { 
+        type: "assessment",
+        position: { x: 800, y: 200 + index * 150 },
+        data: {
           assessment,
-          onEdit: () => setShowAssessmentModal(true)
-        }
+          onEdit: () => setShowAssessmentModal(true),
+        },
       });
     });
 
@@ -323,20 +336,20 @@ const FlowDashboard = () => {
     if (stagesData.length > 0) {
       const lastStage = stagesData[stagesData.length - 1];
       newEdges.push({
-        id: 'add-stage-edge',
+        id: "add-stage-edge",
         source: `candidates-${lastStage.id}`,
-        target: 'add-stage-target',
-        type: 'addStage',
-        data: { onAddStage: handleAddStage }
+        target: "add-stage-target",
+        type: "addStage",
+        data: { onAddStage: handleAddStage },
       });
 
       // Invisible target node for add stage edge - position at the calculated end
       newNodes.push({
-        id: 'add-stage-target',
-        type: 'default',
+        id: "add-stage-target",
+        type: "default",
         position: { x: 300, y: currentY },
-        style: { opacity: 0, pointerEvents: 'none' },
-        data: {}
+        style: { opacity: 0, pointerEvents: "none" },
+        data: {},
       });
     }
 
@@ -351,18 +364,14 @@ const FlowDashboard = () => {
 
   const handleMoveToNext = async (candidateId, currentStage) => {
     try {
-      const currentStageIndex = stages.findIndex(s => s.id === currentStage);
+      const currentStageIndex = stages.findIndex((s) => s.id === currentStage);
       if (currentStageIndex < stages.length - 1) {
         const nextStage = stages[currentStageIndex + 1];
-        
+
         // Get candidate details for timeline
-        const candidate = candidates.find(c => c.id === candidateId);
-        
-        await fetch(`/api/candidates/${candidateId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ stage: nextStage.id })
-        });
+        const candidate = candidates.find((c) => c.id === candidateId);
+
+        await candidatesAPI.update(candidateId, { stage: nextStage.id });
 
         // Add timeline entry for the stage change
         if (candidate) {
@@ -370,14 +379,14 @@ const FlowDashboard = () => {
             await dbHelpers.addTimelineEntry({
               candidateId: candidateId,
               candidateName: candidate.name,
-              action: 'moved',
+              action: "moved",
               fromStage: stages[currentStageIndex].name,
               toStage: nextStage.name,
               details: `Moved from ${stages[currentStageIndex].name} to ${nextStage.name}`,
-              timestamp: new Date()
+              timestamp: new Date(),
             });
           } catch (timelineError) {
-            console.error('Failed to create timeline entry:', timelineError);
+            console.error("Failed to create timeline entry:", timelineError);
           }
         }
 
@@ -385,7 +394,7 @@ const FlowDashboard = () => {
         await refreshCandidatesOnly();
       }
     } catch (error) {
-      console.error('Error moving candidate:', error);
+      console.error("Error moving candidate:", error);
     }
   };
 
@@ -395,14 +404,13 @@ const FlowDashboard = () => {
   };
 
   const handleDeleteStage = async (stageId) => {
-    if (window.confirm('Are you sure you want to delete this stage?')) {
+    if (window.confirm("Are you sure you want to delete this stage?")) {
       try {
-        await fetch(`/api/jobs/${jobId}/stages/${stageId}`, {
-          method: 'DELETE'
-        });
+        // Delete stage from database
+        await dbHelpers.deleteJobStage(stageId);
         fetchJobFlow();
       } catch (error) {
-        console.error('Error deleting stage:', error);
+        console.error("Error deleting stage:", error);
       }
     }
   };
@@ -424,7 +432,7 @@ const FlowDashboard = () => {
         <div className="text-center">
           <p className="text-red-600 text-lg font-medium">{error}</p>
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate("/dashboard")}
             className="mt-4 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
           >
             Back to Dashboard
@@ -437,7 +445,7 @@ const FlowDashboard = () => {
   return (
     <div className="h-screen bg-gray-50">
       <AuthenticatedHeader />
-      
+
       <div className="h-full">
         <ReactFlow
           nodes={nodes}
@@ -453,21 +461,21 @@ const FlowDashboard = () => {
         >
           <Panel position="top-left" className="flex space-x-2">
             <button
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate("/dashboard")}
               className="flex items-center px-3 py-2 bg-white rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Analytics
             </button>
             <button
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate("/dashboard")}
               className="flex items-center px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
             >
               <BarChart3 className="w-4 h-4 mr-2" />
               View Analytics
             </button>
           </Panel>
-          
+
           <Background />
           <Controls />
           <MiniMap />
