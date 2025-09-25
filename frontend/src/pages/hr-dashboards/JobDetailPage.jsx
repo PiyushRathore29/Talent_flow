@@ -13,33 +13,19 @@ const JobDetailPage = () => {
     const fetchJob = async () => {
       try {
         setLoading(true);
-        // Try MSW API first, fallback to IndexedDB
-        try {
-          const response = await fetch(`/api/jobs/${jobId}`);
+        console.log("🔍 Fetching job with ID:", jobId);
 
-          if (!response.ok) {
-            if (response.status === 404) {
-              setError("Job not found");
-            } else {
-              throw new Error(
-                `HTTP ${response.status}: ${response.statusText}`
-              );
-            }
-            return;
-          }
+        // Use IndexedDB directly (MSW disabled in production)
+        const response = await jobsAPI.getById(jobId);
+        console.log("📦 API Response:", response);
 
-          const data = await response.json();
-          setJob(data.data);
+        if (response.success && response.data) {
+          setJob(response.data);
           setError(null);
-        } catch (apiError) {
-          console.warn(
-            "MSW API failed, using IndexedDB fallback:",
-            apiError.message
-          );
-          // Fallback to IndexedDB
-          const data = await jobsAPI.getById(jobId);
-          setJob(data);
-          setError(null);
+          console.log("✅ Job loaded successfully:", response.data);
+        } else {
+          setError("Job not found");
+          console.log("❌ Job not found in response");
         }
       } catch (err) {
         setError(err.message);
@@ -87,6 +73,25 @@ const JobDetailPage = () => {
     );
   }
 
+  if (!job) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-black transition-colors duration-200">
+        <AuthenticatedHeader />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-white dark:bg-black rounded-lg shadow-sm border dark:border-gray-800 p-8 text-center transition-colors duration-200">
+            <div className="text-gray-400 text-4xl mb-4">📋</div>
+            <h2 className="text-2xl font-impact font-bold uppercase text-primary-500 dark:text-white tracking-tight mb-4">
+              Loading Job Details...
+            </h2>
+            <p className="text-gray-500 dark:text-gray-300 mb-6">
+              Please wait while we load the job information.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-black transition-colors duration-200">
       <AuthenticatedHeader />
@@ -97,7 +102,7 @@ const JobDetailPage = () => {
           <div className="flex justify-between items-start">
             <div>
               <h1 className="text-3xl font-impact font-bold uppercase text-primary-500 dark:text-white tracking-tight">
-                {job.title}
+                {job.title || "Untitled Job"}
               </h1>
               <p className="text-gray-600 dark:text-gray-300 mt-1">
                 {job.department || "General"}
@@ -242,11 +247,15 @@ const JobDetailPage = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Type:</span>
-                  <span className="font-medium">{job.type}</span>
+                  <span className="font-medium">
+                    {job.employmentType || job.type}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Experience:</span>
-                  <span className="font-medium">{job.experience}</span>
+                  <span className="font-medium">
+                    {job.experience || "Not specified"}
+                  </span>
                 </div>
               </div>
             </div>

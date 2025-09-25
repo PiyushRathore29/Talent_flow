@@ -115,8 +115,8 @@ const handleJobsEndpoint = async (path, method, body, searchParams) => {
         
         if (params.search) {
           filteredJobs = jobs.filter(job => 
-            job.details?.title?.toLowerCase().includes(params.search.toLowerCase()) ||
-            job.details?.description?.toLowerCase().includes(params.search.toLowerCase())
+            job.title?.toLowerCase().includes(params.search.toLowerCase()) ||
+            job.description?.toLowerCase().includes(params.search.toLowerCase())
           );
         }
         
@@ -128,7 +128,7 @@ const handleJobsEndpoint = async (path, method, body, searchParams) => {
         if (params.sort === 'order') {
           filteredJobs.sort((a, b) => (a.order || 0) - (b.order || 0));
         } else if (params.sort === 'title') {
-          filteredJobs.sort((a, b) => (a.details?.title || '').localeCompare(b.details?.title || ''));
+          filteredJobs.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
         }
         
         // Apply pagination

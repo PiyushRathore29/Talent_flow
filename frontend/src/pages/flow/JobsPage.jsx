@@ -66,45 +66,22 @@ const JobsPage = () => {
     [assessments]
   );
 
-  // Fetch jobs using MSW API with IndexedDB fallback
+  // Fetch jobs using IndexedDB directly (MSW disabled in production)
   const fetchJobs = useCallback(async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        pageSize: pageSize.toString(),
+
+      // Use IndexedDB directly since MSW is disabled in production
+      const data = await jobsAPI.getAll({
+        page: currentPage,
+        pageSize: pageSize,
         ...(appliedSearch && { search: appliedSearch }),
         ...(statusFilter && { status: statusFilter }),
         ...(sortBy && { sort: sortBy }),
       });
-
-      // Try MSW API first, fallback to IndexedDB
-      try {
-        const response = await fetch(`/api/jobs?${params}`);
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        const data = await response.json();
-        setJobs(data.data || []);
-        setTotalPages(data.pagination?.totalPages || 1);
-        setError(null);
-      } catch (apiError) {
-        console.warn(
-          "MSW API failed, using IndexedDB fallback:",
-          apiError.message
-        );
-        // Fallback to IndexedDB
-        const data = await jobsAPI.getAll({
-          page: currentPage,
-          pageSize: pageSize,
-          ...(appliedSearch && { search: appliedSearch }),
-          ...(statusFilter && { status: statusFilter }),
-          ...(sortBy && { sort: sortBy }),
-        });
-        setJobs(data.data || []);
-        setTotalPages(data.pagination?.totalPages || 1);
-        setError(null);
-      }
+      setJobs(data.data || []);
+      setTotalPages(data.pagination?.totalPages || 1);
+      setError(null);
     } catch (err) {
       setError(err.message);
       console.error("Failed to fetch jobs:", err);
@@ -148,25 +125,8 @@ const JobsPage = () => {
   // Create new job
   const handleCreateJob = async (jobData) => {
     try {
-      // Try MSW API first, fallback to IndexedDB
-      try {
-        const response = await fetch("/api/jobs", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(jobData),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to create job: ${response.statusText}`);
-        }
-      } catch (apiError) {
-        console.warn(
-          "MSW API failed, using IndexedDB fallback:",
-          apiError.message
-        );
-        // Fallback to IndexedDB
-        await jobsAPI.create(jobData);
-      }
+      // Use IndexedDB directly since MSW is disabled in production
+      await jobsAPI.create(jobData);
 
       await fetchJobs(); // Refresh list
       setShowCreateModal(false);
@@ -182,25 +142,8 @@ const JobsPage = () => {
   // Update job
   const handleUpdateJob = async (jobId, updates) => {
     try {
-      // Try MSW API first, fallback to IndexedDB
-      try {
-        const response = await fetch(`/api/jobs/${jobId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updates),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to update job: ${response.statusText}`);
-        }
-      } catch (apiError) {
-        console.warn(
-          "MSW API failed, using IndexedDB fallback:",
-          apiError.message
-        );
-        // Fallback to IndexedDB
-        await jobsAPI.update(jobId, updates);
-      }
+      // Use IndexedDB directly since MSW is disabled in production
+      await jobsAPI.update(jobId, updates);
 
       await fetchJobs(); // Refresh list
       setEditingJob(null);
@@ -243,10 +186,8 @@ const JobsPage = () => {
       try {
         const updatePromises = newJobsOrder.map((job, index) => {
           const newOrder = index + 1;
-          const fromOrder =
-            job.order || allJobs.findIndex((j) => j.id === job.id) + 1;
 
-          return jobsAPI.reorder(job.id, { fromOrder, toOrder: newOrder });
+          return jobsAPI.reorder(job.id, newOrder);
         });
 
         await Promise.all(updatePromises);

@@ -151,11 +151,7 @@ const JobFlowPage = () => {
         // });
         // if (!response.ok) throw new Error("Failed to update job order");
 
-        // Use IndexedDB directly
-        await jobsAPI.reorder(job.id, {
-          fromOrder: job.order,
-          toOrder: newOrder,
-        });
+        // Use IndexedDB directly        await jobsAPI.reorder(job.id, newOrder);
 
         // Refresh jobs data to reflect changes
         await fetchAllJobs();
