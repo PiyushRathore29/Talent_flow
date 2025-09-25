@@ -419,49 +419,6 @@ const AnalyticsDashboard = () => {
           {/* Charts Row 2 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Assessment Completion */}
-            <div className="bg-white dark:bg-black rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-              <h3 className="text-lg font-impact font-medium uppercase text-primary-500 dark:text-primary-400 tracking-wide mb-4">
-                Assessment Completion
-              </h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={dashboardData.assessmentCompletion}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {dashboardData.assessmentCompletion.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: isDarkMode ? "#000000" : "#ffffff",
-                      border: `1px solid ${isDarkMode ? "#374151" : "#e5e7eb"}`,
-                      borderRadius: "8px",
-                      color: isDarkMode ? "#ffffff" : "#000000",
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="flex justify-center space-x-4 mt-4">
-                {dashboardData.assessmentCompletion.map((item, index) => (
-                  <div key={index} className="flex items-center">
-                    <div
-                      className="w-3 h-3 rounded-full mr-2"
-                      style={{ backgroundColor: item.color }}
-                    />
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      {item.name}: {item.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
 
             {/* Recent Activity */}
             <div className="bg-white dark:bg-black rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">

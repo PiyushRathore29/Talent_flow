@@ -8,8 +8,6 @@ import {
   Hash,
   CheckSquare,
   Circle,
-  Upload,
-  AlignLeft,
 } from "lucide-react";
 import { db } from "../../../lib/database.js";
 
@@ -98,7 +96,7 @@ const SimpleAssessmentBuilder = () => {
     },
   ];
 
-  const addQuestion = (type) => {
+  const addQuestion = (type, sectionIndex = 0) => {
     const newQuestion = {
       id: `q-${Date.now()}`,
       type,
@@ -117,8 +115,8 @@ const SimpleAssessmentBuilder = () => {
 
     setAssessment((prev) => ({
       ...prev,
-      sections: prev.sections.map((section, index) =>
-        index === 0
+      sections: prev.sections.map((section, idx) =>
+        idx === sectionIndex
           ? { ...section, questions: [...section.questions, newQuestion] }
           : section
       ),
@@ -241,6 +239,22 @@ const SimpleAssessmentBuilder = () => {
       console.error("❌ Error saving assessment:", error);
       alert("Failed to save assessment: " + error.message);
     }
+  };
+
+  // ➕ Add new section
+  const addSection = () => {
+    setAssessment((prev) => ({
+      ...prev,
+      sections: [
+        ...prev.sections,
+        {
+          id: `section-${Date.now()}`,
+          title: "New Section",
+          description: "",
+          questions: [],
+        },
+      ],
+    }));
   };
 
   const renderQuestion = (question, index) => {
@@ -474,63 +488,71 @@ const SimpleAssessmentBuilder = () => {
               />
             </div>
 
-            {/* Section */}
-            <div className="border border-gray-200 rounded-lg">
-              {/* Section Header */}
-              <div className="p-4 bg-gray-50 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <input
-                    type="text"
-                    value={assessment.sections[0].title}
-                    onChange={(e) =>
-                      setAssessment((prev) => ({
-                        ...prev,
-                        sections: prev.sections.map((section, index) =>
-                          index === 0
-                            ? { ...section, title: e.target.value }
-                            : section
-                        ),
-                      }))
-                    }
-                    className="text-lg font-semibold bg-transparent border-none focus:outline-none focus:ring-0 flex-1"
-                    placeholder="Section title"
-                  />
-                  <button className="text-gray-500 hover:text-red-600">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Section Content */}
-              <div className="p-4">
-                {/* Questions */}
-                <div className="space-y-4 mb-4">
-                  {assessment.sections[0].questions.map((question, index) =>
-                    renderQuestion(question, index)
-                  )}
+            {/* Sections */}
+            {assessment.sections.map((section, sectionIndex) => (
+              <div
+                key={section.id}
+                className="border border-gray-200 rounded-lg mb-4"
+              >
+                {/* Section Header */}
+                <div className="p-4 bg-gray-50 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <input
+                      type="text"
+                      value={section.title}
+                      onChange={(e) =>
+                        setAssessment((prev) => ({
+                          ...prev,
+                          sections: prev.sections.map((s, idx) =>
+                            idx === sectionIndex
+                              ? { ...s, title: e.target.value }
+                              : s
+                          ),
+                        }))
+                      }
+                      className="text-lg font-semibold bg-transparent border-none focus:outline-none focus:ring-0 flex-1"
+                      placeholder="Section title"
+                    />
+                    <button className="text-gray-500 hover:text-red-600">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
-                {/* Add Question Buttons */}
-                <div className="flex gap-2">
-                  {questionTypes.map((type) => {
-                    const Icon = type.icon;
-                    return (
-                      <button
-                        key={type.id}
-                        onClick={() => addQuestion(type.id)}
-                        className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                      >
-                        <Icon className="w-4 h-4" />
-                        {type.label}
-                      </button>
-                    );
-                  })}
+                {/* Section Content */}
+                <div className="p-4">
+                  {/* Questions */}
+                  <div className="space-y-4 mb-4">
+                    {section.questions.map((question, index) =>
+                      renderQuestion(question, index)
+                    )}
+                  </div>
+
+                  {/* Add Question Buttons */}
+                  <div className="flex gap-2 flex-wrap">
+                    {questionTypes.map((type) => {
+                      const Icon = type.icon;
+                      return (
+                        <button
+                          key={type.id}
+                          onClick={() => addQuestion(type.id, sectionIndex)}
+                          className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                        >
+                          <Icon className="w-4 h-4" />
+                          {type.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-            </div>
+            ))}
 
             {/* Add New Section Button */}
-            <button className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-300 hover:text-blue-600 mt-4">
+            <button
+              onClick={addSection}
+              className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-300 hover:text-blue-600 mt-4"
+            >
               <Plus className="w-5 h-5 mx-auto mb-1" />
               Add New Section
             </button>
@@ -538,28 +560,30 @@ const SimpleAssessmentBuilder = () => {
         </div>
 
         {/* Right Panel - Live Preview */}
-        <div className="w-1/2 bg-gray-50">
+        <div className="w-1/2 bg-gray-50 overflow-y-auto">
           <div className="p-6">
             <h2 className="text-xl font-bold mb-4">Live Preview</h2>
 
-            {assessment.sections[0].questions.length === 0 ? (
+            {assessment.sections.length === 0 ? (
               <div className="text-center text-gray-500 py-8">
-                <p className="text-lg">No questions yet</p>
+                <p className="text-lg">No sections yet</p>
                 <p className="text-sm">
                   Start building on the left to see preview here
                 </p>
               </div>
             ) : (
-              <div>
-                <h3 className="text-lg font-semibold mb-4">
-                  {assessment.sections[0].title}
-                </h3>
-                <div className="space-y-4">
-                  {assessment.sections[0].questions.map((question, index) =>
-                    renderPreviewQuestion(question, index)
-                  )}
+              assessment.sections.map((section, sectionIndex) => (
+                <div key={section.id} className="mb-6">
+                  <h3 className="text-lg font-semibold mb-4">
+                    {section.title}
+                  </h3>
+                  <div className="space-y-4">
+                    {section.questions.map((question, index) =>
+                      renderPreviewQuestion(question, index)
+                    )}
+                  </div>
                 </div>
-              </div>
+              ))
             )}
           </div>
         </div>
