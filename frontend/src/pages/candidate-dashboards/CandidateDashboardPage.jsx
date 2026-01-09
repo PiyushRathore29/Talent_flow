@@ -1,7 +1,7 @@
 import React from "react";
-import AuthenticatedHeader from "../../components/AuthenticatedHeader";
-import Footer from "../../components/Footer";
-import CandidateDashboard from "../../components/CandidateDashboard";
+import AuthenticatedHeader from "../../components/layout/AuthenticatedHeader";
+import Footer from "../../components/layout/Footer";
+import CandidateDashboard from "../../components/dashboard/CandidateDashboard";
 
 const CandidateDashboardPage = () => {
   return (

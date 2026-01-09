@@ -16,10 +16,10 @@ import { dbHelpers } from "../../lib/database.js";
 import { jobsAPI, candidatesAPI } from "../../lib/api/indexedDBClient";
 
 // Import existing flow components
-import JobNode from "../../components/flow/JobNode";
-import CandidateNode from "../../components/flow/CandidateNode";
-import AssessmentNode from "../../components/flow/AssessmentNode";
-import StageTitleNode from "../../components/flow/StageTitleNode";
+import JobNode from "../../features/flow/JobNode";
+import CandidateNode from "../../features/flow/CandidateNode";
+import AssessmentNode from "../../features/flow/AssessmentNode";
+import StageTitleNode from "../../features/flow/StageTitleNode";
 
 // Custom node types
 const nodeTypes = {
@@ -394,15 +394,12 @@ const JobFlowPage = () => {
       // Add timeline entry for the stage change
       if (candidate && currentStageObj && newStageObj) {
         try {
-          await dbHelpers.addTimelineEntry({
-            candidateId: candidateId,
-            candidateName: candidate.name,
-            action: "moved",
-            fromStage: currentStageObj.name,
-            toStage: newStageObj.name,
-            details: `Moved from ${currentStageObj.name} to ${newStageObj.name}`,
-            timestamp: new Date(),
-          });
+          await dbHelpers.logStageChange(
+            candidate,
+            currentStageObj.name,
+            newStageObj.name,
+            job
+          );
         } catch (timelineError) {
           console.error("Failed to create timeline entry:", timelineError);
         }

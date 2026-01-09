@@ -1,3 +1,24 @@
+/*
+ * SIGN IN PAGE COMPONENT - SignInPage.jsx
+ *
+ * LOGIN FLOW EXPLANATION:
+ * 1) User enters email and password in form
+ * 2) User clicks "Sign In" button
+ * 3) Component calls signIn function from AuthContext
+ * 4) AuthContext validates credentials against database
+ * 5) If valid → creates session → redirects to appropriate dashboard
+ * 6) If invalid → shows error message
+ *
+ * DEMO FEATURES:
+ * - Quick login buttons for HR and Candidate roles
+ * - Pre-filled demo credentials for testing
+ * - Role-based redirect after successful login
+ *
+ * REDIRECT LOGIC:
+ * - HR users → /dashboard (main HR dashboard)
+ * - Candidate users → /dashboard/candidate
+ */
+
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
@@ -13,11 +34,17 @@ import {
   BarChart3,
   TrendingUp,
 } from "lucide-react";
-import Logo from "../../components/Logo";
+import Logo from "../../components/common/Logo";
 
 const SignInPage = () => {
   const navigate = useNavigate();
   const { signIn } = useAuth();
+
+  // FORM STATE MANAGEMENT:
+  // formData: Stores email and password input values
+  // showPassword: Toggles password visibility
+  // loading: Shows loading state during sign in process
+  // error: Displays error messages if login fails
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -26,6 +53,8 @@ const SignInPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // DEMO AUTO-FILL FUNCTION:
+  // Pre-fills form with demo credentials for testing
   const autofillDemo = (role = "hr") => {
     if (role === "hr") {
       setFormData({
@@ -40,6 +69,8 @@ const SignInPage = () => {
     }
   };
 
+  // FORM INPUT HANDLER:
+  // Updates form data when user types and clears any existing errors
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -48,21 +79,28 @@ const SignInPage = () => {
     if (error) setError("");
   };
 
+  // FORM SUBMISSION FLOW:
+  // Step 1: Prevent default form submission
+  // Step 2: Set loading state and clear errors
+  // Step 3: Call signIn function from AuthContext
+  // Step 4: Handle success/error and redirect appropriately
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
+    // Call authentication function
     const result = await signIn(formData.email, formData.password);
 
     if (result.success) {
-      // Redirect based on role
+      // Redirect based on user role
       if (result.user.role === "hr") {
         navigate("/dashboard/employer");
       } else {
         navigate("/dashboard/candidate");
       }
     } else {
+      // Show error message if login fails
       setError(result.error);
     }
 

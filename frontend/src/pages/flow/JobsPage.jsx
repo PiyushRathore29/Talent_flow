@@ -1,28 +1,74 @@
+/*
+ * JOBS MANAGEMENT PAGE - JobsPage.jsx
+ *
+ * HR JOB MANAGEMENT FLOW EXPLANATION:
+ * 1) HR user navigates to /jobs route
+ * 2) Page loads all jobs from database with pagination
+ * 3) HR can search, filter, and sort jobs
+ * 4) HR can create new jobs via "Create Job" button
+ * 5) HR can edit existing jobs by clicking edit button
+ * 6) HR can view job details and manage job flow
+ * 7) HR can delete jobs and reorder job priority
+ *
+ * JOB CREATION FLOW:
+ * - Click "Create Job" → Opens JobModal → Fill form → Save → Job created in database
+ *
+ * JOB EDITING FLOW:
+ * - Click edit button on job card → Opens JobModal with pre-filled data → Modify → Save → Job updated
+ *
+ * JOB DELETION FLOW:
+ * - Click delete button → Confirmation dialog → Confirm → Job removed from database
+ *
+ * NAVIGATION FLOW:
+ * - Click job title → Navigate to /jobs/:jobId (JobDetailPage)
+ * - Click "Manage Flow" → Navigate to /jobs/:jobId/flow (JobFlowPage)
+ */
+
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { dbHelpers } from "../../lib/database.js";
-import { useToast } from "../../components/Toast.jsx";
+import { useToast } from "../../components/common/Toast.jsx";
 import { jobsAPI } from "../../lib/api/indexedDBClient";
 
 const JobsPage = () => {
+  // CORE DATA STATE:
+  // jobs: Array of job objects loaded from database
+  // loading: Shows loading spinner while fetching data
+  // error: Displays error messages if data loading fails
+  // assessments: Array of assessments to show which jobs have assessments
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [assessments, setAssessments] = useState([]);
 
-  // Toast hook
+  // TOAST NOTIFICATION SYSTEM:
+  // Provides user feedback for success/error operations
   const { showSuccess, showError, showWarning, ToastContainer } = useToast();
 
-  // Pagination and filtering state
+  // PAGINATION AND FILTERING STATE:
+  // currentPage: Current page number for pagination
+  // pageSize: Number of jobs per page (fixed at 12)
+  // totalPages: Total number of pages based on filtered results
+  // search: Current search input value
+  // appliedSearch: Actual search term used for filtering (applied on Enter)
+  // statusFilter: Filter by job status (active, closed, etc.)
+  // sortBy: Sort jobs by field (title, date, etc.)
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(12);
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState(""); // This will trigger the actual search
   const [statusFilter, setStatusFilter] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
   const [sortBy, setSortBy] = useState("title");
 
-  // Modal state
+  // MODAL AND INTERACTION STATE:
+  // showCreateModal: Controls job creation modal visibility
+  // editingJob: Job object being edited (null if creating new)
+  // isReorderMode: Enables drag-and-drop reordering of jobs
+  // allJobs: Complete list of jobs for reordering operations
+  // draggedItem: Job being dragged in reorder mode
+  // dragOverIndex: Index where dragged item is being dropped
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingJob, setEditingJob] = useState(null);
   const [isReorderMode, setIsReorderMode] = useState(false);
@@ -30,7 +76,8 @@ const JobsPage = () => {
   const [draggedItem, setDraggedItem] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
 
-  // Handle search on Enter key press
+  // SEARCH FUNCTIONALITY:
+  // Trigger search when user presses Enter key
   const handleSearchKeyDown = (e) => {
     if (e.key === "Enter") {
       setAppliedSearch(search);
@@ -38,14 +85,16 @@ const JobsPage = () => {
     }
   };
 
-  // Handle search clear
+  // Clear search input and reset pagination
   const handleClearSearch = () => {
     setSearch("");
     setAppliedSearch("");
     setCurrentPage(1);
   };
 
-  // Load assessments to check which jobs have assessments
+  // ASSESSMENT DATA LOADING:
+  // Load all assessments to show which jobs have associated assessments
+  // This helps display assessment status badges on job cards
   const loadAssessments = useCallback(async () => {
     try {
       const { db } = await import("../../lib/database.js");
@@ -56,7 +105,8 @@ const JobsPage = () => {
     }
   }, []);
 
-  // Check if a job has an assessment
+  // ASSESSMENT CHECK FUNCTION:
+  // Determines if a specific job has an associated assessment
   const hasAssessment = useCallback(
     (jobId) => {
       return assessments.some(
@@ -66,7 +116,8 @@ const JobsPage = () => {
     [assessments]
   );
 
-  // Fetch jobs using IndexedDB directly (MSW disabled in production)
+  // JOB DATA FETCHING:
+  // Loads jobs from database with pagination, search, and filtering
   const fetchJobs = useCallback(async () => {
     try {
       setLoading(true);
@@ -77,6 +128,7 @@ const JobsPage = () => {
         pageSize: pageSize,
         ...(appliedSearch && { search: appliedSearch }),
         ...(statusFilter && { status: statusFilter }),
+        ...(locationFilter && { location: locationFilter }),
         ...(sortBy && { sort: sortBy }),
       });
       setJobs(data.data || []);
@@ -88,15 +140,24 @@ const JobsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, appliedSearch, statusFilter, sortBy, pageSize]);
+  }, [
+    currentPage,
+    appliedSearch,
+    statusFilter,
+    locationFilter,
+    sortBy,
+    pageSize,
+  ]);
 
-  // Load jobs on component mount and when filters change
+  // COMPONENT LIFECYCLE:
+  // Load jobs and assessments when component mounts or filters change
   useEffect(() => {
     fetchJobs();
     loadAssessments();
   }, [fetchJobs, loadAssessments]);
 
-  // Fetch all jobs for reorder mode
+  // REORDER MODE DATA FETCHING:
+  // Loads all jobs in order for drag-and-drop reordering functionality
   const fetchAllJobs = useCallback(async () => {
     try {
       // Use IndexedDB directly for reorder mode to get consistent ordering
@@ -115,14 +176,18 @@ const JobsPage = () => {
     }
   }, []);
 
-  // Load all jobs when entering reorder mode
+  // REORDER MODE LIFECYCLE:
+  // Load all jobs when entering reorder mode for drag-and-drop functionality
   useEffect(() => {
     if (isReorderMode) {
       fetchAllJobs();
     }
   }, [isReorderMode, fetchAllJobs]);
 
-  // Create new job
+  // JOB CREATION FLOW:
+  // Step 1: User clicks "Create Job" → Opens modal
+  // Step 2: User fills form → Clicks save
+  // Step 3: Job created in database → List refreshed → Modal closed → Success toast shown
   const handleCreateJob = async (jobData) => {
     try {
       // Use IndexedDB directly since MSW is disabled in production
@@ -139,7 +204,10 @@ const JobsPage = () => {
     }
   };
 
-  // Update job
+  // JOB UPDATE FLOW:
+  // Step 1: User clicks edit button → Opens modal with pre-filled data
+  // Step 2: User modifies form → Clicks save
+  // Step 3: Job updated in database → List refreshed → Modal closed → Success toast shown
   const handleUpdateJob = async (jobId, updates) => {
     try {
       // Use IndexedDB directly since MSW is disabled in production
@@ -159,7 +227,11 @@ const JobsPage = () => {
     }
   };
 
-  // Handle job reordering with drag and drop
+  // JOB REORDERING FLOW:
+  // Step 1: User drags job cards in reorder mode
+  // Step 2: New order calculated and applied to local state
+  // Step 3: Order values updated in database
+  // Step 4: Success feedback shown to user
   const handleReorderJobs = async (newJobsOrder) => {
     try {
       console.log("🔄 Starting job reorder:", newJobsOrder);
@@ -291,11 +363,18 @@ const JobsPage = () => {
     };
   }, [isReorderMode]);
 
-  // Drag and drop handlers
+  // DRAG AND DROP EVENT HANDLERS:
+  // These functions implement the drag-and-drop reordering functionality
+
   const handleDragStart = (e, job, index) => {
+    // INITIATE DRAG: Set up drag operation with job data
+    // Store dragged item info and set drag effect
     isDraggingRef.current = true;
     setDraggedItem({ job, index });
     e.dataTransfer.effectAllowed = "move";
+
+    // STORE DRAG DATA: JSON data for drop target to use
+    // Contains job ID and source index for reordering
     e.dataTransfer.setData(
       "text/plain",
       JSON.stringify({ jobId: job.id, sourceIndex: index })
@@ -303,10 +382,12 @@ const JobsPage = () => {
   };
 
   const handleDragOver = (e, targetIndex) => {
+    // DRAG OVER TARGET: Allow drop and show visual feedback
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     setDragOverIndex(targetIndex);
 
+    // AUTO-SCROLL: Enable auto-scrolling during drag operations
     // Only handle auto-scroll if we're actively dragging
     if (isDraggingRef.current) {
       handleAutoScroll(e.clientY);
@@ -314,12 +395,15 @@ const JobsPage = () => {
   };
 
   const handleDragEnter = (e, targetIndex) => {
+    // DRAG ENTER TARGET: Update drop target index
     e.preventDefault();
     setDragOverIndex(targetIndex);
   };
 
   const handleDragLeave = (e) => {
+    // DRAG LEAVE TARGET: Clear drop target if leaving container
     // Only clear if we're leaving the entire container
+    // Prevents flickering when moving between child elements
     if (!e.currentTarget.contains(e.relatedTarget)) {
       setDragOverIndex(null);
       // Don't stop auto-scroll here as we might still be dragging
@@ -409,7 +493,7 @@ const JobsPage = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Filters */}
         <div className="bg-white dark:bg-black rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 mb-6 transition-colors duration-200">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 leading-relaxed tracking-wide mb-2">
                 Search (Press Enter)
@@ -441,6 +525,29 @@ const JobsPage = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 leading-relaxed tracking-wide mb-2">
+                Location
+              </label>
+              <select
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+                disabled={isReorderMode}
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">All Locations</option>
+                <option value="San Francisco, CA">San Francisco, CA</option>
+                <option value="New York, NY">New York, NY</option>
+                <option value="Austin, TX">Austin, TX</option>
+                <option value="Seattle, WA">Seattle, WA</option>
+                <option value="Chicago, IL">Chicago, IL</option>
+                <option value="Boston, MA">Boston, MA</option>
+                <option value="Los Angeles, CA">Los Angeles, CA</option>
+                <option value="Denver, CO">Denver, CO</option>
+                <option value="Remote">Remote</option>
+                <option value="Miami, FL">Miami, FL</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 leading-relaxed tracking-wide mb-2">
                 Sort By
               </label>
               <select
@@ -450,6 +557,7 @@ const JobsPage = () => {
                 className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="title">Title</option>
+                <option value="created">Newest Job</option>
                 <option value="updatedAt">Order</option>
                 <option value="status">Status</option>
               </select>
@@ -471,6 +579,7 @@ const JobsPage = () => {
                 onClick={() => {
                   handleClearSearch();
                   setStatusFilter("");
+                  setLocationFilter("");
                   setSortBy("title");
                 }}
                 disabled={isReorderMode}

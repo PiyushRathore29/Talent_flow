@@ -13,7 +13,7 @@ import {
   Users,
   Briefcase,
 } from "lucide-react";
-import Logo from "../../components/Logo";
+import Logo from "../../components/common/Logo";
 
 const SignUpPage = () => {
   const navigate = useNavigate();

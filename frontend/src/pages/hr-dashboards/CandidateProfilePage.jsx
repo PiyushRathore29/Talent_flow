@@ -15,14 +15,11 @@ import {
   Eye,
   Loader2,
 } from "lucide-react";
-import Timeline from "../../components/Timeline";
-import NotesModal from "../../components/NotesModal";
-import NotesSection from "../../components/NotesSection";
+import Timeline from "../../components/dashboard/Timeline";
+import NotesModal from "../../components/modals/NotesModal";
+import NotesSection from "../../components/common/NotesSection";
 import { dbHelpers } from "../../lib/database";
 import { getAssessmentByJobId } from "../../data/assessmentsData";
-import { getTimelineEntries } from "../../data/timelineData";
-import { initialCandidates } from "../../data/candidatesData";
-import { jobsData } from "../../data/jobsData";
 import { useAppStore } from "../../lib/store";
 
 const CandidateProfilePage = () => {

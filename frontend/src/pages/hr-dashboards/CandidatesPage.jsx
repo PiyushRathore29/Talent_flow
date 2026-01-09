@@ -35,10 +35,10 @@ import {
 } from "@dnd-kit/sortable";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import AuthenticatedHeader from "../../components/AuthenticatedHeader";
-import Footer from "../../components/Footer";
-import CandidatesBoard from "../../components/CandidatesBoard";
-import { useToast } from "../../components/Toast";
+import AuthenticatedHeader from "../../components/layout/AuthenticatedHeader";
+import Footer from "../../components/layout/Footer";
+import CandidatesBoard from "../../components/dashboard/CandidatesBoard";
+import { useToast } from "../../components/common/Toast";
 import { dbHelpers } from "../../lib/database";
 
 // Create Candidate Button Component
@@ -205,31 +205,28 @@ const CandidatesPage = () => {
   const [searchParams] = useSearchParams();
   const jobId = searchParams.get("jobId");
 
-  // Toast system
   const { showSuccess, showError, ToastContainer } = useToast();
 
-  // State variables
   const [candidates, setCandidates] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [currentJob, setCurrentJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Filters
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(20);
+
+  // ✅ RE-ADDED: State for the input and the submitted search term
   const [search, setSearch] = useState("");
-  const [appliedSearch, setAppliedSearch] = useState(""); // This will trigger the actual search
+  const [appliedSearch, setAppliedSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("");
 
-  // View mode
-  const [viewMode, setViewMode] = useState("kanban"); // 'list' or 'kanban'
+  const [viewMode, setViewMode] = useState("kanban");
 
-  // Drag and drop state
   const [activeId, setActiveId] = useState(null);
   const [draggedCandidate, setDraggedCandidate] = useState(null);
 
-  // Handle search on Enter key press
+  // ✅ RE-ADDED: Handler to set the search term on Enter press
   const handleSearchKeyDown = (e) => {
     if (e.key === "Enter") {
       setAppliedSearch(search);
@@ -237,14 +234,6 @@ const CandidatesPage = () => {
     }
   };
 
-  // Handle search clear
-  const handleClearSearch = () => {
-    setSearch("");
-    setAppliedSearch("");
-    setCurrentPage(1);
-  };
-
-  // Drag and drop sensors
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -252,10 +241,9 @@ const CandidatesPage = () => {
     })
   );
 
-  // Drag and drop handlers
   const handleDragStart = (event) => {
     const { active } = event;
-    const candidate = candidates.find((c) => c.id === active.id);
+    const candidate = allCandidates.find((c) => c.id === active.id);
     setActiveId(active.id);
     setDraggedCandidate(candidate);
   };
@@ -263,7 +251,6 @@ const CandidatesPage = () => {
   const handleDragEnd = async (event) => {
     const { active, over } = event;
 
-    // If no drop target or dropped on itself, do nothing
     if (!over || active.id === over.id) {
       setActiveId(null);
       setDraggedCandidate(null);
@@ -273,7 +260,6 @@ const CandidatesPage = () => {
     const candidateId = active.id;
     const newStage = over.id;
 
-    // Validate that the drop target is a valid stage
     const validStages = stages.map((stage) => stage.id);
     if (!validStages.includes(newStage)) {
       console.log("Invalid drop target, candidate will stay in original stage");
@@ -282,7 +268,6 @@ const CandidatesPage = () => {
       return;
     }
 
-    // Find candidate and update optimistically
     const candidate = allCandidates.find((c) => c.id === candidateId);
     if (!candidate) {
       setActiveId(null);
@@ -293,7 +278,6 @@ const CandidatesPage = () => {
     const oldStage = candidate.stage;
     const stageName = stages.find((s) => s.id === newStage)?.name || newStage;
 
-    // Check if this is a forward movement (prevent moving backwards)
     const currentStageIndex = stages.findIndex((s) => s.id === oldStage);
     const newStageIndex = stages.findIndex((s) => s.id === newStage);
 
@@ -305,26 +289,20 @@ const CandidatesPage = () => {
       return;
     }
 
-    // Optimistic update - immediately update local state
     const updatedCandidate = { ...candidate, stage: newStage };
     const updatedAllCandidates = allCandidates.map((c) =>
       c.id === candidateId ? updatedCandidate : c
     );
     setAllCandidates(updatedAllCandidates);
 
-    // Also update paginated candidates if it contains this candidate
     setCandidates((prev) =>
       prev.map((c) => (c.id === candidateId ? updatedCandidate : c))
     );
 
     try {
-      // Update candidate stage in IndexedDB
       await dbHelpers.updateCandidate(candidateId, { stage: newStage });
-
-      // Show success toast
       showSuccess(`${candidate?.name || "Candidate"} moved to ${stageName}`);
 
-      // Log to timeline (non-blocking)
       const job = jobs.find((j) => j.id === candidate.jobId);
       if (job) {
         const oldStageName =
@@ -344,7 +322,6 @@ const CandidatesPage = () => {
       console.error("Error updating candidate stage:", error);
       showError(`Error updating candidate stage: ${error.message}`);
 
-      // Revert optimistic update on error
       setAllCandidates(allCandidates);
       setCandidates((prev) =>
         prev.map((c) => (c.id === candidateId ? candidate : c))
@@ -360,13 +337,11 @@ const CandidatesPage = () => {
     setDraggedCandidate(null);
   };
 
-  // Utility functions
   const handleStageChange = async (candidateId, newStage) => {
     console.log(
       `🔄 Stage change requested: Candidate ${candidateId} -> ${newStage}`
     );
 
-    // Find candidate info for logging and UI updates
     const candidate = allCandidates.find((c) => c.id === candidateId);
     if (!candidate) {
       showError("Candidate not found");
@@ -378,30 +353,25 @@ const CandidatesPage = () => {
     const oldStageName =
       stages.find((s) => s.id === candidate?.stage)?.name || candidate?.stage;
 
-    // Optimistic update - immediately update local state
     const updatedCandidate = { ...candidate, stage: newStage };
     const updatedAllCandidates = allCandidates.map((c) =>
       c.id === candidateId ? updatedCandidate : c
     );
     setAllCandidates(updatedAllCandidates);
 
-    // Also update paginated candidates if it contains this candidate
     setCandidates((prev) =>
       prev.map((c) => (c.id === candidateId ? updatedCandidate : c))
     );
 
     try {
-      // Update candidate stage in IndexedDB
       await dbHelpers.updateCandidate(candidateId, { stage: newStage });
 
       console.log(
         `✅ Successfully updated candidate ${candidateId} to stage ${newStage} in IndexedDB`
       );
 
-      // Show success toast
       showSuccess(`${candidate?.name || "Candidate"} moved to ${stageName}`);
 
-      // Log to timeline (non-blocking)
       if (candidate && job) {
         try {
           await dbHelpers.logStageChange(
@@ -419,7 +389,6 @@ const CandidatesPage = () => {
       console.error("❌ Error updating candidate stage:", error);
       showError(`Error updating candidate stage: ${error.message}`);
 
-      // Revert optimistic update on error
       setAllCandidates(allCandidates);
       setCandidates((prev) =>
         prev.map((c) => (c.id === candidateId ? candidate : c))
@@ -428,11 +397,9 @@ const CandidatesPage = () => {
   };
 
   const handleCreateCandidate = async (candidateData) => {
-    // Create temporary ID for optimistic update
     const tempId = Date.now();
 
     try {
-      // Create candidate object for optimistic update
       const newCandidate = {
         id: tempId,
         name: candidateData.name,
@@ -446,10 +413,9 @@ const CandidatesPage = () => {
         appliedDate: new Date(),
       };
 
-      // Optimistic update - add to local state immediately
       setAllCandidates((prev) => [newCandidate, ...prev]);
 
-      // If the new candidate should appear in current filtered view, add it
+      // ✅ CHANGED: Uses `appliedSearch` state for consistency
       const shouldShowInCurrentView =
         (!jobId || candidateData.jobId === parseInt(jobId)) &&
         (!stageFilter || candidateData.stage === stageFilter) &&
@@ -465,7 +431,6 @@ const CandidatesPage = () => {
         setCandidates((prev) => [newCandidate, ...prev]);
       }
 
-      // Create candidate object for database
       const candidateForDB = {
         name: candidateData.name,
         email: candidateData.email,
@@ -476,14 +441,12 @@ const CandidatesPage = () => {
         resumeUrl: null,
       };
 
-      // Store in IndexedDB
       const realCandidateId = await dbHelpers.createCandidate(
         candidateForDB,
         1
-      ); // Using userId 1 as default
+      );
 
       if (realCandidateId) {
-        // Update the candidate with real ID
         const updatedCandidate = { ...newCandidate, id: realCandidateId };
 
         setAllCandidates((prev) =>
@@ -496,10 +459,8 @@ const CandidatesPage = () => {
           );
         }
 
-        // Show success toast
         showSuccess(`New candidate ${candidateData.name} created`);
 
-        // Log to timeline (non-blocking)
         const job = jobs.find((j) => j.id === candidateData.jobId);
         if (job) {
           try {
@@ -522,51 +483,11 @@ const CandidatesPage = () => {
       console.error("Error creating candidate:", error);
       showError(`Error creating candidate: ${error.message}`);
 
-      // Revert optimistic update on error
       setAllCandidates((prev) => prev.filter((c) => c.id !== tempId));
       setCandidates((prev) => prev.filter((c) => c.id !== tempId));
     }
   };
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-
-        // Fetch jobs using IndexedDB directly (MSW disabled in production)
-        const jobsData = await jobsAPI.getAll();
-        const allJobs = jobsData.data || jobsData;
-        setJobs(allJobs);
-
-        // If jobId is provided, find the specific job
-        if (jobId) {
-          const specificJob = allJobs.find((job) => job.id === parseInt(jobId));
-          setCurrentJob(specificJob);
-        }
-
-        // Fetch candidates using IndexedDB directly (MSW disabled in production)
-        const candidatesData = await candidatesAPI.getAll();
-        const allCandidates = candidatesData.data || candidatesData;
-
-        // Filter candidates by jobId if provided
-        const filteredCandidates = jobId
-          ? allCandidates.filter(
-              (candidate) => candidate.jobId === parseInt(jobId)
-            )
-          : allCandidates;
-
-        setCandidates(filteredCandidates);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [jobId]);
-
-  // Kanban stages
   const stages = [
     { id: "applied", name: "Applied", color: "bg-blue-500" },
     { id: "screen", name: "Screening", color: "bg-yellow-500" },
@@ -576,20 +497,16 @@ const CandidatesPage = () => {
     { id: "rejected", name: "Rejected", color: "bg-red-500" },
   ];
 
-  // Analytics state
   const [showAnalytics, setShowAnalytics] = useState(true);
   const [allCandidates, setAllCandidates] = useState([]);
 
-  // Calculate analytics data
   const getAnalyticsData = () => {
-    // Pipeline data
     const pipelineData = stages.map((stage) => ({
       stage: stage.name,
       count: allCandidates.filter((c) => c.stage === stage.id).length,
       color: stage.color.replace("bg-", "#"),
     }));
 
-    // Application trends (mock data - in real app would be based on application dates)
     const trendsData = [
       { month: "Jan", applications: 45 },
       { month: "Feb", applications: 52 },
@@ -599,7 +516,6 @@ const CandidatesPage = () => {
       { month: "Jun", applications: 74 },
     ];
 
-    // Conversion rates
     const totalApplied = allCandidates.filter(
       (c) => c.stage === "applied"
     ).length;
@@ -612,21 +528,17 @@ const CandidatesPage = () => {
 
   const { pipelineData, trendsData, conversionRate } = getAnalyticsData();
 
-  // Fetch candidates from IndexedDB
   const fetchCandidates = async () => {
     try {
       setLoading(true);
 
-      // Fetch all candidates from IndexedDB for analytics and display
       const allCandidatesData = await dbHelpers.getAllCandidates();
 
-      // Normalize stage field for compatibility (some might have 'currentStage', others 'stage')
       const normalizedCandidates = allCandidatesData.map((candidate) => ({
         ...candidate,
-        stage: candidate.stage || candidate.currentStage || "applied", // Ensure stage field exists
+        stage: candidate.stage || candidate.currentStage || "applied",
       }));
 
-      // Filter by jobId if provided
       const filteredAllCandidates = jobId
         ? normalizedCandidates.filter(
             (candidate) => candidate.jobId === parseInt(jobId)
@@ -635,9 +547,9 @@ const CandidatesPage = () => {
 
       setAllCandidates(filteredAllCandidates);
 
-      // Apply search and stage filters
       let filteredCandidates = [...filteredAllCandidates];
 
+      // ✅ CHANGED: Filtering now uses `appliedSearch`.
       if (appliedSearch) {
         const searchLower = appliedSearch.toLowerCase();
         filteredCandidates = filteredCandidates.filter(
@@ -653,16 +565,7 @@ const CandidatesPage = () => {
         );
       }
 
-      // Apply pagination
-      const totalCandidates = filteredCandidates.length;
-      const startIndex = (currentPage - 1) * pageSize;
-      const endIndex = startIndex + pageSize;
-      const paginatedCandidates = filteredCandidates.slice(
-        startIndex,
-        endIndex
-      );
-
-      setCandidates(paginatedCandidates);
+      setCandidates(filteredCandidates);
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -672,10 +575,8 @@ const CandidatesPage = () => {
     }
   };
 
-  // Fetch jobs for displaying job titles
   const fetchJobs = async () => {
     try {
-      // Use IndexedDB directly since MSW is disabled in production
       const data = await jobsAPI.getAll({ pageSize: 100 });
       setJobs(data.data || []);
     } catch (err) {
@@ -684,36 +585,20 @@ const CandidatesPage = () => {
   };
 
   useEffect(() => {
-    fetchJobs(); // Fetch jobs on component mount
+    fetchJobs();
   }, []);
 
+  // ✅ CHANGED: `useEffect` now depends on `appliedSearch`.
   useEffect(() => {
     fetchCandidates();
   }, [currentPage, appliedSearch, stageFilter, jobId]);
 
-  // Group candidates by stage for kanban view (use allCandidates for full dataset)
   const candidatesByStage = stages.reduce((acc, stage) => {
-    acc[stage.id] = allCandidates.filter(
+    acc[stage.id] = candidates.filter(
       (candidate) => candidate.stage === stage.id
     );
     return acc;
   }, {});
-
-  // Debug logging
-  console.log("All Candidates data:", allCandidates.length, "candidates");
-  console.log("Sample candidate data structure:", allCandidates[0]);
-  console.log(
-    "Candidates by stage:",
-    Object.keys(candidatesByStage).map((stageId) => ({
-      stage: stageId,
-      count: candidatesByStage[stageId].length,
-      candidates: candidatesByStage[stageId].map((c) => ({
-        name: c.name,
-        stage: c.stage,
-        currentStageId: c.currentStageId,
-      })),
-    }))
-  );
 
   if (loading) {
     return (
@@ -725,10 +610,8 @@ const CandidatesPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-black transition-colors duration-200">
-      {/* Toast Container */}
       <ToastContainer />
 
-      {/* Header */}
       <div className="bg-white dark:bg-black shadow-sm border-b dark:border-gray-800 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
@@ -790,7 +673,6 @@ const CandidatesPage = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Analytics Section */}
         {showAnalytics && (
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
@@ -810,7 +692,6 @@ const CandidatesPage = () => {
               </button>
             </div>
 
-            {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
               <div className="bg-white dark:bg-black rounded-lg shadow-sm border dark:border-gray-800 p-6 transition-colors duration-200">
                 <div className="flex items-center justify-between">
@@ -881,9 +762,7 @@ const CandidatesPage = () => {
               </div>
             </div>
 
-            {/* Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              {/* Pipeline Chart */}
               <div className="bg-white dark:bg-black rounded-lg shadow-sm border dark:border-gray-800 p-6 transition-colors duration-200">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                   Candidate Pipeline
@@ -922,7 +801,6 @@ const CandidatesPage = () => {
                 </ResponsiveContainer>
               </div>
 
-              {/* Application Trends */}
               <div className="bg-white dark:bg-black rounded-lg shadow-sm border dark:border-gray-800 p-6 transition-colors duration-200">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                   Application Trends
@@ -970,7 +848,6 @@ const CandidatesPage = () => {
           </div>
         )}
 
-        {/* Filters */}
         <div className="bg-white dark:bg-black rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-6 mb-6 transition-colors duration-200">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -979,9 +856,10 @@ const CandidatesPage = () => {
               </label>
               <input
                 type="text"
-                placeholder="Search candidates... (Press Enter to search)"
+                placeholder="Search candidates... (Press Enter)"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                // ✅ RE-ADDED: `onKeyDown` handler to trigger search
                 onKeyDown={handleSearchKeyDown}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-200"
               />
@@ -1005,8 +883,10 @@ const CandidatesPage = () => {
             </div>
             <div className="flex items-end">
               <button
+                // ✅ CHANGED: Clears both search states
                 onClick={() => {
-                  handleClearSearch();
+                  setSearch("");
+                  setAppliedSearch("");
                   setStageFilter("");
                 }}
                 className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
@@ -1017,7 +897,6 @@ const CandidatesPage = () => {
           </div>
         </div>
 
-        {/* Error Display */}
         {error && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4 mb-6 transition-colors duration-200">
             <div className="flex">
@@ -1034,7 +913,6 @@ const CandidatesPage = () => {
           </div>
         )}
 
-        {/* Content */}
         {viewMode === "kanban" ? (
           <DndContext
             sensors={sensors}
@@ -1147,7 +1025,6 @@ const DroppableColumn = React.memo(
             ))}
           </SortableContext>
 
-          {/* Empty state with drop hint */}
           {candidates.length === 0 && (
             <div
               className={`text-center py-8 text-gray-400 dark:text-gray-500 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg transition-all duration-300 ${
@@ -1352,7 +1229,6 @@ const CandidateCard = React.memo(
           isDragging ? "shadow-2xl ring-2 ring-blue-300 dark:ring-blue-600" : ""
         }`}
       >
-        {/* Draggable Upper Half */}
         <div
           {...dragAttributes}
           {...dragListeners}
@@ -1360,7 +1236,6 @@ const CandidateCard = React.memo(
             isDraggable ? "hover:bg-gray-50 dark:hover:bg-gray-900/50" : ""
           }`}
         >
-          {/* Drag indicator */}
           {isDraggable && (
             <div className="absolute top-2 right-2 text-gray-400 opacity-50">
               <svg
@@ -1379,7 +1254,6 @@ const CandidateCard = React.memo(
             </div>
           )}
 
-          {/* Header with Name */}
           <div className="flex items-center justify-between mb-3">
             <Link
               to={`/candidates/${candidate.id}`}
@@ -1391,7 +1265,6 @@ const CandidateCard = React.memo(
             </Link>
           </div>
 
-          {/* Email */}
           <div
             className="text-xs text-gray-500 dark:text-gray-400 mb-3 truncate transition-colors duration-200"
             title={candidate.email}
@@ -1399,7 +1272,6 @@ const CandidateCard = React.memo(
             {candidate.email}
           </div>
 
-          {/* Job Title */}
           {candidateJob && (
             <div
               className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-3 truncate transition-colors duration-200"
@@ -1409,7 +1281,6 @@ const CandidateCard = React.memo(
             </div>
           )}
 
-          {/* Current Stage Badge */}
           <div className="mb-2">
             <span
               className={`inline-block px-3 py-1 text-xs font-semibold rounded-full transition-all duration-300 transform ${
@@ -1431,10 +1302,8 @@ const CandidateCard = React.memo(
           </div>
         </div>
 
-        {/* Clickable Lower Half */}
         <div className="px-4 pb-4 pt-2 border-t border-gray-100 dark:border-gray-700">
           <div className="flex justify-between items-center">
-            {/* Stage Dropdown - only show in list view */}
             {!isDraggable && stages && (
               <select
                 value={candidate.stage}
@@ -1449,26 +1318,22 @@ const CandidateCard = React.memo(
               </select>
             )}
 
-            {/* Action Links */}
             <div className="flex space-x-2 ml-auto">
               <Link
                 to={`/candidates/${candidate.id}/timeline`}
                 className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200 whitespace-nowrap hover:underline"
                 onClick={(e) => {
                   e.stopPropagation();
-                  // Store referrer context based on current URL
                   const currentUrl = window.location.href;
                   const urlParams = new URLSearchParams(window.location.search);
                   const jobId = urlParams.get("jobId");
 
                   if (jobId) {
-                    // User is viewing job-specific candidates
                     sessionStorage.setItem(
                       "candidateReferrer",
                       JSON.stringify({ type: "job", jobId })
                     );
                   } else {
-                    // User is viewing general candidates
                     sessionStorage.setItem(
                       "candidateReferrer",
                       JSON.stringify({ type: "general" })

@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw';
 import { db } from '../lib/database.js';
 import { withLatencyAndErrors, withLatency, LATENCY_CONFIG } from './utils.js';
 
-// Helper function to get candidates with pagination
+// Helper function to get candidates with pagination + filtering
 const getCandidatesFromDB = async (params = {}) => {
   try {
     const {
@@ -10,31 +10,57 @@ const getCandidatesFromDB = async (params = {}) => {
       pageSize = 20,
       search = '',
       stage = '',
-      jobId = ''
+      jobId = '',
+      sort = 'desc',
+      sortBy = 'createdAt',
     } = params;
 
     let candidates = await db.candidates.toArray();
 
-    // Apply filters
-    if (search) {
-      candidates = candidates.filter(candidate => 
-        candidate.name?.toLowerCase().includes(search.toLowerCase()) ||
-        candidate.email?.toLowerCase().includes(search.toLowerCase())
+    // === FILTERS ===
+    // 1) Stage: exact match (if provided)
+    if (stage) {
+      candidates = candidates.filter(
+        candidate => candidate.stage?.toLowerCase() === stage.toLowerCase()
       );
     }
 
-    if (stage) {
-      candidates = candidates.filter(candidate => candidate.stage === stage);
-    }
-
+    // 2) jobId: preserve existing logic (if provided)
     if (jobId) {
-      candidates = candidates.filter(candidate => candidate.jobId === parseInt(jobId));
+      candidates = candidates.filter(candidate => candidate.jobId?.toString() === jobId.toString());
     }
 
-    // Sort by created date (newest first)
-    candidates.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    // 3) Search: ONLY match by candidate name (firstName + lastName), case-insensitive
+    if (search) {
+      const s = search.toLowerCase();
+      candidates = candidates.filter(candidate =>
+        `${candidate.firstName || ''} ${candidate.lastName || ''}`.toLowerCase().includes(s)
+      );
+    }
 
-    // Apply pagination
+    // === SORTING (preserve existing logic) ===
+    candidates.sort((a, b) => {
+      const aVal = a[sortBy];
+      const bVal = b[sortBy];
+
+      // If sorting by a date-like field, compare as dates
+      if (aVal && bVal && (sortBy.toLowerCase().includes('date') || sortBy.toLowerCase().includes('at'))) {
+        const aTime = new Date(aVal).getTime();
+        const bTime = new Date(bVal).getTime();
+        if (isNaN(aTime) || isNaN(bTime)) return 0;
+        return sort === 'asc' ? aTime - bTime : bTime - aTime;
+      }
+
+      // Fallback to string compare
+      if (aVal == null || bVal == null) return 0;
+      const aStr = String(aVal).toLowerCase();
+      const bStr = String(bVal).toLowerCase();
+      if (aStr < bStr) return sort === 'asc' ? -1 : 1;
+      if (aStr > bStr) return sort === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    // === PAGINATION (preserve existing logic) ===
     const totalCount = candidates.length;
     const totalPages = Math.ceil(totalCount / pageSize);
     const startIndex = (page - 1) * pageSize;
@@ -59,26 +85,30 @@ const getCandidatesFromDB = async (params = {}) => {
 };
 
 export const candidateHandlers = [
-  // GET /candidates?search=&stage=&page=&jobId=
+  // GET /api/candidates?search=&stage=&page=&jobId=&sort=&sortBy=
   http.get('/api/candidates', withLatency(async ({ request }) => {
     try {
       const url = new URL(request.url);
       const searchParams = url.searchParams;
-      
+
       const params = {
         page: parseInt(searchParams.get('page')) || 1,
         pageSize: parseInt(searchParams.get('pageSize')) || 20,
         search: searchParams.get('search') || '',
         stage: searchParams.get('stage') || '',
-        jobId: searchParams.get('jobId') || ''
+        jobId: searchParams.get('jobId') || '',
+        sort: searchParams.get('sort') || 'desc',
+        sortBy: searchParams.get('sortBy') || 'createdAt'
       };
 
       const result = await getCandidatesFromDB(params);
-      
+
       console.log('📊 [MSW] Candidates fetched from IndexedDB:', {
         total: result.pagination.totalCount,
         page: result.pagination.currentPage,
-        returned: result.data.length
+        returned: result.data.length,
+        search: params.search,
+        stage: params.stage
       });
 
       return HttpResponse.json(result);
@@ -88,19 +118,19 @@ export const candidateHandlers = [
     }
   }, LATENCY_CONFIG.READ)),
 
-  // GET /candidates/:id
+  // GET /api/candidates/:id
   http.get('/api/candidates/:id', withLatency(async ({ params }) => {
     try {
       const candidateId = parseInt(params.id);
       const candidate = await db.candidates.get(candidateId);
-      
+
       if (!candidate) {
         return new HttpResponse('Candidate not found', { status: 404 });
       }
 
       // Get candidate's job information
       const job = await db.jobs.get(candidate.jobId);
-      
+
       // Get candidate history
       const history = await db.candidateHistory
         .where('candidateId')
@@ -121,174 +151,33 @@ export const candidateHandlers = [
     }
   }, LATENCY_CONFIG.READ)),
 
-  // POST /candidates
-  http.post('/api/candidates', withLatencyAndErrors(async ({ request }) => {
-    try {
-      const newCandidate = await request.json();
-      
-      const candidateToCreate = {
-        ...newCandidate,
-        stage: newCandidate.stage || 'applied',
-        appliedDate: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-
-      const candidateId = await db.candidates.add(candidateToCreate);
-      
-      // Create initial history entry
-      await db.candidateHistory.add({
-        candidateId,
-        fromStageId: null,
-        toStageId: 1, // Applied stage
-        changedBy: 1, // Default user
-        changedAt: new Date(),
-        note: 'Initial application submitted'
-      });
-
-      const createdCandidate = await db.candidates.get(candidateId);
-      
-      console.log('✅ [MSW] Candidate created in IndexedDB:', candidateId);
-      return HttpResponse.json(createdCandidate, { status: 201 });
-    } catch (error) {
-      console.error('❌ [MSW] Error creating candidate:', error);
-      return new HttpResponse('Failed to create candidate', { status: 500 });
-    }
-  }, LATENCY_CONFIG.WRITE)),
-
-  // PUT /candidates/:id
-  http.put('/api/candidates/:id', withLatencyAndErrors(async ({ params, request }) => {
-    try {
-      const candidateId = parseInt(params.id);
-      const updates = await request.json();
-      
-      const existingCandidate = await db.candidates.get(candidateId);
-      if (!existingCandidate) {
-        return new HttpResponse('Candidate not found', { status: 404 });
-      }
-
-      // If stage is being updated, create history entry
-      if (updates.stage && updates.stage !== existingCandidate.stage) {
-        await db.candidateHistory.add({
-          candidateId,
-          fromStageId: existingCandidate.currentStageId || null,
-          toStageId: getStageId(updates.stage),
-          changedBy: 1, // Default user
-          changedAt: new Date(),
-          note: `Stage changed from ${existingCandidate.stage} to ${updates.stage}`
-        });
-      }
-
-      const updatedData = {
-        ...updates,
-        updatedAt: new Date()
-      };
-
-      await db.candidates.update(candidateId, updatedData);
-      const updatedCandidate = await db.candidates.get(candidateId);
-      
-      console.log('🔄 [MSW] Candidate updated in IndexedDB (PUT):', candidateId);
-      return HttpResponse.json(updatedCandidate);
-    } catch (error) {
-      console.error('❌ [MSW] Error updating candidate (PUT):', error);
-      return new HttpResponse('Failed to update candidate', { status: 500 });
-    }
-  }, LATENCY_CONFIG.WRITE)),
-
-  // PATCH /candidates/:id
-  http.patch('/api/candidates/:id', withLatencyAndErrors(async ({ params, request }) => {
-    try {
-      const candidateId = parseInt(params.id);
-      const updates = await request.json();
-      
-      const existingCandidate = await db.candidates.get(candidateId);
-      if (!existingCandidate) {
-        return new HttpResponse('Candidate not found', { status: 404 });
-      }
-
-      // If stage is being updated, create history entry
-      if (updates.stage && updates.stage !== existingCandidate.stage) {
-        await db.candidateHistory.add({
-          candidateId,
-          fromStageId: existingCandidate.currentStageId || null,
-          toStageId: getStageId(updates.stage),
-          changedBy: 1, // Default user
-          changedAt: new Date(),
-          note: `Stage changed from ${existingCandidate.stage} to ${updates.stage}`
-        });
-      }
-
-      const updatedData = {
-        ...updates,
-        updatedAt: new Date()
-      };
-
-      await db.candidates.update(candidateId, updatedData);
-      const updatedCandidate = await db.candidates.get(candidateId);
-      
-      console.log('🔄 [MSW] Candidate updated in IndexedDB:', candidateId);
-      return HttpResponse.json(updatedCandidate);
-    } catch (error) {
-      console.error('❌ [MSW] Error updating candidate:', error);
-      return new HttpResponse('Failed to update candidate', { status: 500 });
-    }
-  }, LATENCY_CONFIG.WRITE)),
-
-  // DELETE /candidates/:id
-  http.delete('/api/candidates/:id', withLatencyAndErrors(async ({ params }) => {
-    try {
-      const candidateId = parseInt(params.id);
-      
-      const candidate = await db.candidates.get(candidateId);
-      if (!candidate) {
-        return new HttpResponse('Candidate not found', { status: 404 });
-      }
-
-      // Delete candidate and related data
-      await Promise.all([
-        db.candidates.delete(candidateId),
-        db.candidateHistory.where('candidateId').equals(candidateId).delete(),
-        db.candidateNotes.where('candidateId').equals(candidateId).delete(),
-        db.assessmentResponses.where('candidateId').equals(candidateId).delete()
-      ]);
-
-      console.log('🗑️ [MSW] Candidate deleted from IndexedDB:', candidateId);
-      return new HttpResponse(null, { status: 204 });
-    } catch (error) {
-      console.error('❌ [MSW] Error deleting candidate:', error);
-      return new HttpResponse('Failed to delete candidate', { status: 500 });
-    }
-  }, LATENCY_CONFIG.WRITE)),
-
-  // GET /candidates/:id/timeline
+  // GET /api/candidates/:id/timeline
   http.get('/api/candidates/:id/timeline', withLatency(async ({ params }) => {
     try {
       const candidateId = parseInt(params.id);
-      
+
       const candidate = await db.candidates.get(candidateId);
       if (!candidate) {
         return new HttpResponse('Candidate not found', { status: 404 });
       }
 
-      // Get candidate history
+      // Get candidate history, notes, assessment responses
       const history = await db.candidateHistory
         .where('candidateId')
         .equals(candidateId)
         .toArray();
 
-      // Get candidate notes
       const notes = await db.candidateNotes
         .where('candidateId')
         .equals(candidateId)
         .toArray();
 
-      // Get assessment responses
       const assessmentResponses = await db.assessmentResponses
         .where('candidateId')
         .equals(candidateId)
         .toArray();
 
-      // Combine and sort timeline events
+      // Combine timeline events and sort newest first
       const timelineEvents = [
         ...history.map(h => ({
           id: `history-${h.id}`,
@@ -322,10 +211,149 @@ export const candidateHandlers = [
       console.error('❌ [MSW] Error fetching candidate timeline:', error);
       return new HttpResponse('Failed to fetch timeline', { status: 500 });
     }
-  }, LATENCY_CONFIG.READ))
+  }, LATENCY_CONFIG.READ)),
+
+  // POST /api/candidates
+  http.post('/api/candidates', withLatencyAndErrors(async ({ request }) => {
+    try {
+      const newCandidate = await request.json();
+
+      const candidateToCreate = {
+        ...newCandidate,
+        stage: newCandidate.stage || 'applied',
+        appliedDate: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      const candidateId = await db.candidates.add(candidateToCreate);
+
+      // Create initial history entry (preserve original logic)
+      await db.candidateHistory.add({
+        candidateId,
+        fromStageId: null,
+        toStageId: getStageId(candidateToCreate.stage),
+        changedBy: 1, // Default user
+        changedAt: new Date(),
+        note: 'Initial application submitted'
+      });
+
+      const createdCandidate = await db.candidates.get(candidateId);
+
+      console.log('✅ [MSW] Candidate created in IndexedDB:', candidateId);
+      return HttpResponse.json(createdCandidate, { status: 201 });
+    } catch (error) {
+      console.error('❌ [MSW] Error creating candidate:', error);
+      return new HttpResponse('Failed to create candidate', { status: 500 });
+    }
+  }, LATENCY_CONFIG.WRITE)),
+
+  // PUT /api/candidates/:id
+  http.put('/api/candidates/:id', withLatencyAndErrors(async ({ params, request }) => {
+    try {
+      const candidateId = parseInt(params.id);
+      const updates = await request.json();
+
+      const existingCandidate = await db.candidates.get(candidateId);
+      if (!existingCandidate) {
+        return new HttpResponse('Candidate not found', { status: 404 });
+      }
+
+      // If stage is being updated, create history entry
+      if (updates.stage && updates.stage !== existingCandidate.stage) {
+        await db.candidateHistory.add({
+          candidateId,
+          fromStageId: existingCandidate.currentStageId || null,
+          toStageId: getStageId(updates.stage),
+          changedBy: 1, // Default user
+          changedAt: new Date(),
+          note: `Stage changed from ${existingCandidate.stage} to ${updates.stage}`
+        });
+      }
+
+      const updatedData = {
+        ...updates,
+        updatedAt: new Date()
+      };
+
+      await db.candidates.update(candidateId, updatedData);
+      const updatedCandidate = await db.candidates.get(candidateId);
+
+      console.log('🔄 [MSW] Candidate updated in IndexedDB (PUT):', candidateId);
+      return HttpResponse.json(updatedCandidate);
+    } catch (error) {
+      console.error('❌ [MSW] Error updating candidate (PUT):', error);
+      return new HttpResponse('Failed to update candidate', { status: 500 });
+    }
+  }, LATENCY_CONFIG.WRITE)),
+
+  // PATCH /api/candidates/:id
+  http.patch('/api/candidates/:id', withLatencyAndErrors(async ({ params, request }) => {
+    try {
+      const candidateId = parseInt(params.id);
+      const updates = await request.json();
+
+      const existingCandidate = await db.candidates.get(candidateId);
+      if (!existingCandidate) {
+        return new HttpResponse('Candidate not found', { status: 404 });
+      }
+
+      // If stage is being updated, create history entry
+      if (updates.stage && updates.stage !== existingCandidate.stage) {
+        await db.candidateHistory.add({
+          candidateId,
+          fromStageId: existingCandidate.currentStageId || null,
+          toStageId: getStageId(updates.stage),
+          changedBy: 1, // Default user
+          changedAt: new Date(),
+          note: `Stage changed from ${existingCandidate.stage} to ${updates.stage}`
+        });
+      }
+
+      const updatedData = {
+        ...updates,
+        updatedAt: new Date()
+      };
+
+      await db.candidates.update(candidateId, updatedData);
+      const updatedCandidate = await db.candidates.get(candidateId);
+
+      console.log('🔄 [MSW] Candidate updated in IndexedDB (PATCH):', candidateId);
+      return HttpResponse.json(updatedCandidate);
+    } catch (error) {
+      console.error('❌ [MSW] Error updating candidate (PATCH):', error);
+      return new HttpResponse('Failed to update candidate', { status: 500 });
+    }
+  }, LATENCY_CONFIG.WRITE)),
+
+  // DELETE /api/candidates/:id
+  http.delete('/api/candidates/:id', withLatencyAndErrors(async ({ params }) => {
+    try {
+      const candidateId = parseInt(params.id);
+
+      const candidate = await db.candidates.get(candidateId);
+      if (!candidate) {
+        return new HttpResponse('Candidate not found', { status: 404 });
+      }
+
+      // Delete candidate and related data (preserve existing logic)
+      await Promise.all([
+        db.candidates.delete(candidateId),
+        db.candidateHistory.where('candidateId').equals(candidateId).delete(),
+        db.candidateNotes.where('candidateId').equals(candidateId).delete(),
+        db.assessmentResponses.where('candidateId').equals(candidateId).delete()
+      ]);
+
+      console.log('🗑️ [MSW] Candidate deleted from IndexedDB:', candidateId);
+      return new HttpResponse(null, { status: 204 });
+    } catch (error) {
+      console.error('❌ [MSW] Error deleting candidate:', error);
+      return new HttpResponse('Failed to delete candidate', { status: 500 });
+    }
+  }, LATENCY_CONFIG.WRITE))
 ];
 
-// Helper function to get stage ID from stage name
+// Helper function to get stage ID from stage name (preserve original mapping)
 const getStageId = (stageName) => {
   const stageMap = {
     'applied': 1,

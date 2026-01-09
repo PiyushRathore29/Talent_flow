@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import Header from "../../components/Header";
-import Footer from "../../components/Footer";
+import Header from "../../components/layout/Header";
+import Footer from "../../components/layout/Footer";
 import {
   Copy,
   Check,
@@ -993,7 +993,7 @@ const MyComponent = () => {
               </h3>
               <CodeBlock
                 code={`// Route protection with role-based access
-import ProtectedRoute from '../components/ProtectedRoute';
+import ProtectedRoute from '../components/layout/ProtectedRoute';
 
 // HR-only routes
 <Route path="/dashboard" element={
@@ -2158,7 +2158,7 @@ const handleSignIn = async (email, password) => {
               </h3>
               <CodeBlock
                 code={`// Route protection with role-based access
-import ProtectedRoute from '../components/ProtectedRoute';
+import ProtectedRoute from '../components/layout/ProtectedRoute';
 
 // HR-only routes
 <Route 

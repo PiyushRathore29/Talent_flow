@@ -1,61 +1,42 @@
-// Hybrid API client that uses MSW in development and IndexedDB in production
-// This preserves all MSW functionality while providing production fallback
-//
-// To re-enable MSW in production, set VITE_ENABLE_MSW=true in your environment
-// To force IndexedDB in development, set VITE_ENABLE_MSW=false in your environment
-//
+/*
+ * INDEXEDDB API CLIENT - indexedDBClient.js
+ * 
+ * API CLIENT EXPLANATION:
+ * This file provides a unified API interface that uses IndexedDB directly
+ * instead of making HTTP requests to a backend server.
+ * 
+ * PURPOSE:
+ * - Provides consistent data access across development and production
+ * - Eliminates need for backend server during development
+ * - Uses IndexedDB for data persistence and retrieval
+ * - Mimics REST API structure for easy migration to backend later
+ * 
+ * API ENDPOINTS SUPPORTED:
+ * - /api/jobs - Job management (GET, POST, PUT, DELETE)
+ * - /api/candidates - Candidate management (GET, POST, PUT, DELETE)
+ * - /api/assessments - Assessment management (GET, POST, PUT, DELETE)
+ * 
+ * DATA FLOW:
+ * - Components call API functions (jobsAPI.create, etc.)
+ * - API functions parse endpoints and route to appropriate handlers
+ * - Handlers use dbHelpers to interact with IndexedDB
+ * - Results returned in consistent API response format
+ */
+
 import { dbHelpers } from '../database';
 
-// Check if MSW is available (only in development)
-const isMSWAvailable = () => {
-  return import.meta.env.DEV && typeof window !== 'undefined' && window.__MSW_WORKER__;
-};
-
-// Check if we should use MSW or IndexedDB fallback
-const shouldUseMSW = () => {
-  // MSW disabled - always use IndexedDB directly
-  return false;
-  // return import.meta.env.DEV && typeof window !== 'undefined' && window.__MSW_WORKER__;
-};
-
-// Generic API call with MSW first, then IndexedDB fallback
+// MAIN API CALL FUNCTION:
+// Routes API calls to appropriate IndexedDB handlers based on endpoint
 export const apiCall = async (endpoint, options = {}) => {
-  const { method = 'GET', body, headers = {} } = options;
-  
-  // Try MSW first if available (development)
-  if (shouldUseMSW()) {
-    try {
-      console.log(`🔄 [API] Trying MSW for ${method} ${endpoint}`);
-      const response = await fetch(endpoint, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          ...headers
-        },
-        body: body ? JSON.stringify(body) : undefined
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const result = await response.json();
-      console.log(`✅ [API] MSW success for ${method} ${endpoint}`);
-      return result;
-    } catch (error) {
-      console.warn(`⚠️ [API] MSW failed for ${method} ${endpoint}, falling back to IndexedDB:`, error.message);
-      // Fall through to IndexedDB fallback
-    }
-  }
-  
-  // IndexedDB fallback for production or when MSW fails
-  console.log(`🔄 [API] Using IndexedDB fallback for ${method} ${endpoint}`);
+  const { method = 'GET', body } = options;
+  console.log(`🗄️ [API] Using IndexedDB for ${method} ${endpoint}`);
   return await handleIndexedDBFallback(endpoint, method, body);
 };
 
-// Handle IndexedDB fallback for different endpoints
+// ENDPOINT ROUTING HANDLER:
+// Parses API endpoints and routes them to appropriate handlers
 const handleIndexedDBFallback = async (endpoint, method, body) => {
-  console.log(`🔄 Using IndexedDB fallback for ${method} ${endpoint}`);
+  console.log(`🔄 Using IndexedDB for ${method} ${endpoint}`);
   
   // Parse endpoint to determine action
   const url = new URL(endpoint, window.location.origin);
@@ -63,17 +44,15 @@ const handleIndexedDBFallback = async (endpoint, method, body) => {
   const searchParams = url.searchParams;
   
   try {
-    // Jobs endpoints
+    // Route to appropriate endpoint handler based on path
     if (path.startsWith('/api/jobs')) {
       return await handleJobsEndpoint(path, method, body, searchParams);
     }
     
-    // Candidates endpoints
     if (path.startsWith('/api/candidates')) {
       return await handleCandidatesEndpoint(path, method, body, searchParams);
     }
     
-    // Assessments endpoints
     if (path.startsWith('/api/assessments')) {
       return await handleAssessmentsEndpoint(path, method, body, searchParams);
     }
@@ -85,7 +64,8 @@ const handleIndexedDBFallback = async (endpoint, method, body) => {
   }
 };
 
-// Handle jobs endpoints
+// JOBS ENDPOINT HANDLER:
+// Handles all job-related API operations (CRUD + search/filter)
 const handleJobsEndpoint = async (path, method, body, searchParams) => {
   const jobId = path.match(/\/api\/jobs\/(\d+)/)?.[1];
   
@@ -105,7 +85,8 @@ const handleJobsEndpoint = async (path, method, body, searchParams) => {
           pageSize: parseInt(searchParams.get('pageSize')) || 10,
           search: searchParams.get('search') || '',
           status: searchParams.get('status') || '',
-          sort: searchParams.get('sort') || 'order'
+          location: searchParams.get('location') || '',
+          sort: searchParams.get('sort') || 'order',
         };
         
         const jobs = await dbHelpers.getAllJobs();
@@ -124,11 +105,17 @@ const handleJobsEndpoint = async (path, method, body, searchParams) => {
           filteredJobs = filteredJobs.filter(job => job.status === params.status);
         }
         
+        if (params.location) {
+          filteredJobs = filteredJobs.filter(job => job.location === params.location);
+        }
+        
         // Apply sorting
         if (params.sort === 'order') {
           filteredJobs.sort((a, b) => (a.order || 0) - (b.order || 0));
         } else if (params.sort === 'title') {
           filteredJobs.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+        } else if (params.sort === 'created') {
+          filteredJobs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         }
         
         // Apply pagination

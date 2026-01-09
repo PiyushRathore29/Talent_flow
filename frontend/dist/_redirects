@@ -1,0 +1,6 @@
+# Redirect all non-API routes to index.html for SPA routing
+/    /index.html   200
+/jobs/*    /index.html   200
+/candidates/*    /index.html   200
+/dashboard    /index.html   200
+/assessments/*    /index.html   200

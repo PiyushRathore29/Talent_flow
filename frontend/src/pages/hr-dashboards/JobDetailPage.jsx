@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import AuthenticatedHeader from "../../components/AuthenticatedHeader";
+import AuthenticatedHeader from "../../components/layout/AuthenticatedHeader";
 import { jobsAPI } from "../../lib/api/indexedDBClient";
 
 const JobDetailPage = () => {

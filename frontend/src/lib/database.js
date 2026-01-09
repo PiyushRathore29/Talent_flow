@@ -1,59 +1,115 @@
+/*
+ * DATABASE SCHEMA - database.js
+ * 
+ * INDEXEDDB SCHEMA EXPLANATION:
+ * This file defines the complete database schema for TalentFlow using Dexie (IndexedDB wrapper)
+ * 
+ * DATABASE STRUCTURE:
+ * 1) Authentication & Users: Users, companies, sessions for login system
+ * 2) Job Management: Jobs, job stages for HR job creation and management
+ * 3) Candidate Management: Candidates, history, notes for tracking applicants
+ * 4) Timeline System: Activity tracking for all candidate actions
+ * 5) Application System: Job applications and their status
+ * 6) Assessment System: Assessments, questions, responses for candidate evaluation
+ * 7) Settings: Application preferences and configurations
+ * 
+ * DATA RELATIONSHIPS:
+ * - Users belong to Companies (multi-tenancy)
+ * - Jobs belong to Companies and are created by Users
+ * - Candidates apply to Jobs and go through JobStages
+ * - Assessments are linked to Jobs for evaluation
+ * - Timeline tracks all candidate movements and actions
+ * 
+ * VERSION CONTROL:
+ * - Version 7: Enhanced assessment system with structured sections and questions
+ * - Each version upgrade handles data migration automatically
+ */
+
 import Dexie from 'dexie';
 
-// Database schema
+// DATABASE CLASS DEFINITION:
+// Extends Dexie to create a local IndexedDB database for TalentFlow
 export class TalentFlowDB extends Dexie {
   constructor() {
     super('TalentFlowDB');
     
+    // DATABASE SCHEMA VERSION 7:
+    // Defines all tables and their indexes for optimal query performance
     this.version(7).stores({
-      // Authentication & Users
+      // AUTHENTICATION & USER MANAGEMENT:
+      // users: Core user data with email uniqueness and company relationship
+      // companies: Company/organization data for multi-tenancy
+      // sessions: User session tokens for authentication persistence
       users: '++id, email, &username, companyId, role, createdAt, lastLogin',
       companies: '++id, &name, domain, createdAt',
       sessions: '++id, userId, token, expiresAt, createdAt',
       
-      // Job Management
+      // JOB MANAGEMENT SYSTEM:
+      // jobs: Job postings with company and creator relationships
+      // jobStages: Pipeline stages for each job (screening, interview, etc.)
       jobs: '++id, companyId, title, status, createdById, createdAt, updatedAt',
       jobStages: '++id, jobId, name, order, type, position, nodeId, createdAt',
       
-      // Candidate Management
+      // CANDIDATE MANAGEMENT SYSTEM:
+      // candidates: Candidate profiles with job and company relationships
+      // candidateHistory: Stage movement history for audit trail
+      // candidateNotes: HR notes and comments on candidates
       candidates: '++id, companyId, jobId, userId, name, email, phone, currentStageId, appliedDate, createdAt',
       candidateHistory: '++id, candidateId, fromStageId, toStageId, changedBy, changedAt, note',
       candidateNotes: '++id, candidateId, authorId, text, mentions, createdAt',
       
-      // Timeline System - Comprehensive activity tracking
+      // TIMELINE SYSTEM:
+      // Comprehensive activity tracking for all candidate actions and movements
       timeline: '++id, candidateId, candidateName, action, actionType, description, fromStage, toStage, timestamp, hrUserId, hrUserName, jobId, jobTitle, metadata',
       
-      // Application System
+      // APPLICATION SYSTEM:
+      // Job applications linking candidates to jobs with status tracking
       applications: '++id, jobId, candidateId, candidateName, candidateEmail, status, appliedAt, createdAt, updatedAt',
       
-      // Enhanced Assessment System
+      // ENHANCED ASSESSMENT SYSTEM:
+      // assessments: Assessment templates linked to jobs
+      // assessmentSections: Organized sections within assessments
+      // assessmentQuestions: Individual questions within sections
+      // assessmentResponses: Candidate answers and scores
+      // assessmentAttempts: Multiple attempt tracking
       assessments: '++id, jobId, title, description, sections, settings, status, createdById, createdAt, updatedAt',
       assessmentSections: '++id, assessmentId, title, description, order, createdAt',
       assessmentQuestions: '++id, assessmentId, sectionId, type, title, description, options, validation, required, order, createdAt',
       assessmentResponses: '++id, assessmentId, candidateId, questionResponses, submittedAt, timeTaken, score, isCompleted, startedAt',
       assessmentAttempts: '++id, assessmentId, candidateId, attemptNumber, responses, submittedAt, score, timeSpent, isCompleted',
       
-      // Application Settings
+      // APPLICATION SETTINGS:
+      // User and company-specific application preferences
       appSettings: '++id, userId, companyId, settings, updatedAt'
     }).upgrade(trans => {
-      // Migration from version 6 to 7: Enhanced assessment system with structured sections and questions
+      // MIGRATION HANDLER:
+      // Handles data structure changes when upgrading database versions
+      // Version 6 to 7: Enhanced assessment system with structured sections and questions
     });
   }
 }
 
-// Initialize database
+// DATABASE INSTANCE:
+// Creates the global database instance for use throughout the application
 export const db = new TalentFlowDB();
 
-// Helper functions for common operations
+// DATABASE HELPER FUNCTIONS:
+// Provides high-level operations for common database tasks
+// These functions abstract away the complexity of IndexedDB operations
 export const dbHelpers = {
-  // User & Authentication
+  // USER & AUTHENTICATION HELPER FUNCTIONS:
+  // These functions handle all user-related database operations
+  
   async createUser(userData) {
-    // Check if user with this username or email already exists
+    // VALIDATION: Check if user with this username or email already exists
+    // Uses Promise.all for parallel execution to improve performance
     const [existingUsername, existingEmail] = await Promise.all([
       db.users.where('username').equals(userData.username).first(),
       db.users.where('email').equals(userData.email).first()
     ]);
     
+    // RETURN EXISTING: If user already exists, return existing ID
+    // This prevents duplicate users and maintains data integrity
     if (existingUsername) {
       return existingUsername.id;
     }
@@ -62,6 +118,7 @@ export const dbHelpers = {
       return existingEmail.id;
     }
     
+    // CREATE NEW USER: Add timestamps and create new user record
     const user = {
       ...userData,
       createdAt: new Date(),
@@ -70,30 +127,42 @@ export const dbHelpers = {
     return await db.users.add(user);
   },
 
+  // USER LOOKUP FUNCTIONS:
+  // These functions retrieve user data by different identifiers
+  
   async getUserByEmail(email) {
+    // Find user by email address (used for login)
     return await db.users.where('email').equals(email).first();
   },
 
   async getUserById(id) {
+    // Find user by primary key ID (used for session restoration)
     return await db.users.get(id);
   },
 
   async getUserByUsername(username) {
+    // Find user by username (alternative login method)
     return await db.users.where('username').equals(username).first();
   },
 
   async updateUserLastLogin(userId) {
+    // Update last login timestamp when user signs in
+    // Used for analytics and session management
     return await db.users.update(userId, { lastLogin: new Date() });
   },
 
-  // Company Management
+  // COMPANY MANAGEMENT FUNCTIONS:
+  // These functions handle company/organization data for multi-tenancy
+  
   async createCompany(companyData) {
-    // Check if company with this name already exists
+    // VALIDATION: Check if company with this name already exists
+    // Prevents duplicate companies and maintains data integrity
     const existingCompany = await db.companies.where('name').equals(companyData.name).first();
     if (existingCompany) {
       return existingCompany.id;
     }
     
+    // CREATE NEW COMPANY: Add timestamp and create company record
     const company = {
       ...companyData,
       createdAt: new Date()
@@ -102,15 +171,21 @@ export const dbHelpers = {
   },
 
   async getCompanyById(id) {
+    // Retrieve company by primary key ID
     return await db.companies.get(id);
   },
 
   async getCompanyByName(name) {
+    // Retrieve company by name (used for HR user registration)
     return await db.companies.where('name').equals(name).first();
   },
 
-  // Session Management
+  // SESSION MANAGEMENT FUNCTIONS:
+  // These functions handle user session tokens for authentication persistence
+  
   async createSession(userId, token) {
+    // CREATE SESSION: Store session with 24-hour expiration
+    // Sessions enable users to stay logged in across browser sessions
     const session = {
       userId,
       token,
@@ -121,6 +196,8 @@ export const dbHelpers = {
   },
 
   async getValidSession(token) {
+    // VALIDATE SESSION: Check if token exists and hasn't expired
+    // Used during app initialization to restore user login state
     const session = await db.sessions.where('token').equals(token).first();
     if (session && session.expiresAt > new Date()) {
       return session;
@@ -129,6 +206,8 @@ export const dbHelpers = {
   },
 
   async deleteSession(token) {
+    // DELETE SESSION: Remove session when user logs out
+    // Prevents token reuse and ensures proper logout
     return await db.sessions.where('token').equals(token).delete();
   },
 

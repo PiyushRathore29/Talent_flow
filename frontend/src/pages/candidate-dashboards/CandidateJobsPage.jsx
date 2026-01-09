@@ -1,6 +1,6 @@
 import React from "react";
-import AuthenticatedHeader from "../../components/AuthenticatedHeader";
-import CandidateJobsBoard from "../../components/CandidateJobsBoard";
+import AuthenticatedHeader from "../../components/layout/AuthenticatedHeader";
+import CandidateJobsBoard from "../../components/dashboard/CandidateJobsBoard";
 
 const CandidateJobsPage = () => {
   return (

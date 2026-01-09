@@ -1,9 +1,9 @@
 import React from "react";
-import Header from "../../components/Header";
-import HeroSection from "../../components/HeroSection";
-import TeamSection from "../../components/TeamSection";
-import AwardsSection from "../../components/AwardsSection";
-import Footer from "../../components/Footer";
+import Header from "../../components/layout/Header";
+import HeroSection from "../../components/landing/HeroSection";
+import TeamSection from "../../components/landing/TeamSection";
+import AwardsSection from "../../components/landing/AwardsSection";
+import Footer from "../../components/layout/Footer";
 
 const MainPage = () => {
   return (

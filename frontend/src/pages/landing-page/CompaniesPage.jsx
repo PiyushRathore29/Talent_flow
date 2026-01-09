@@ -1,8 +1,8 @@
 import React from "react";
-import Header from "../../components/Header";
-import CompaniesHeroSection from "../../components/CompaniesHeroSection";
-import CompaniesSection from "../../components/CompaniesSection";
-import Footer from "../../components/Footer";
+import Header from "../../components/layout/Header";
+import CompaniesHeroSection from "../../components/landing/CompaniesHeroSection";
+import CompaniesSection from "../../components/landing/CompaniesSection";
+import Footer from "../../components/layout/Footer";
 
 const CompaniesPage = () => {
   return (

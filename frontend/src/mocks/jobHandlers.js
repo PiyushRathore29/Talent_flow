@@ -10,6 +10,7 @@ const getJobsFromDB = async (params = {}) => {
       pageSize = 10,
       search = '',
       status = '',
+      location = '',
       sort = 'order'
     } = params;
 
@@ -26,6 +27,10 @@ const getJobsFromDB = async (params = {}) => {
 
     if (status && status !== 'all') {
       jobs = jobs.filter(job => job.status === status);
+    }
+
+    if (location && location !== 'all') {
+      jobs = jobs.filter(job => job.location === location);
     }
 
     // Apply sorting
